@@ -1,0 +1,7 @@
+# Python cache and compile files
+__pycache__/
+*.py[cod]
+
+# User must supply these for specific deployment
+app/nodes.py
+app/config.py
