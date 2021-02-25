@@ -156,6 +156,9 @@ def listener_boilerplate(comptroller):
     comptroller["client_address"] = client_address
     comptroller["withdrawal_amount"] = withdrawal_amount
     comptroller["color"] = color = xterm()
+    comptroller["new_blocks"] = []
+    comptroller["checked_blocks"] = [start_block_num]
+
     print("NONCE", nonce, "LISTENING TO", listening_to)
     if network in ["ltc", "btc"]:
         comptroller["tare"] = get_received_by(listening_to, comptroller)

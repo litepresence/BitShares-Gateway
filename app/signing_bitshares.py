@@ -70,7 +70,7 @@ from secp256k1 import lib as secp256k1_lib  # library
 from websocket import create_connection as wss  # handshake to node
 
 # BITSHARES GATEWAY MODULES
-from config import foreign_accounts, issuing_chain
+from config import gateway_assets, issuing_chain
 from nodes import bitshares_nodes
 
 # GLOBAL CONSTANTS
@@ -2248,11 +2248,11 @@ def prototype_order(network):
     """
     nodes = bitshares_nodes()
     header = {
-        "asset_id": foreign_accounts()["uia"][network]["asset_id"],
-        "asset_precision": foreign_accounts()["uia"][network]["asset_precision"],
-        "account_id": foreign_accounts()["uia"][network]["issuer_id"],
-        "account_name": foreign_accounts()["uia"][network]["issuer_public"],
-        "wif": foreign_accounts()["uia"][network]["issuer_private"],
+        "asset_id": gateway_assets()[network]["asset_id"],
+        "asset_precision": gateway_assets()[network]["asset_precision"],
+        "account_id": gateway_assets()[network]["issuer_id"],
+        "account_name": gateway_assets()[network]["issuer_public"],
+        "wif": gateway_assets()[network]["issuer_private"],
     }
     order = {
         "header": header,

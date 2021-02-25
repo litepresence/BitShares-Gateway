@@ -32,8 +32,9 @@ from requests import get
 # BITSHARES GATEWAY MODULES
 from config import (foreign_accounts, gateway_assets, server_config,
                     test_accounts)
-from listener_bitshares import rpc_balances, rpc_get_objects
+from process_withdrawals import rpc_balances, rpc_get_objects
 from signing_eosio import eos_balance, eos_transfer
+from signing_ltcbtc import ltcbtc_balance, ltcbtc_transfer, ltcbtc_balances
 from signing_ripple import xrp_balance, xrp_transfer
 from utilities import wss_handshake
 
@@ -55,10 +56,11 @@ def gate_balances(network, get_balance):
     check gateway xrp balances
     """
     for gate in foreign_accounts()[network]:
+        comptroller = {"network":network}
         print(
             f"Gateway {network} balance for".ljust(30),
             gate["public"],
-            get_balance(gate["public"]),
+            get_balance(gate["public"], comptroller),
         )
 
 
@@ -68,16 +70,23 @@ def full_balances(network, get_balance):
     check client foreign chain balance
     check client uia balance
     """
-    rpc = wss_handshake("")
+
+    comptroller = {"network": network}
+    print(network, type(network), comptroller, type(comptroller))
     # check gateway foreign chain balances
-    gate_balances(network, get_balance)
+    if network in ["ltc", "btc"]:
+        ltcbtc_balances(None, comptroller)
+    else:
+        gate_balances(network, get_balance)
     # check client foreign chain balance
     print(
         f"\nClient {network} balance for".ljust(31),
         test_accounts()[network]["public"],
-        get_balance(test_accounts()[network]["public"]),
+        get_balance(test_accounts()[network]["public"], comptroller),
     )
     # check client bts uia balance
+    rpc = wss_handshake("")
+    """
     print(
         "\nClient UIA balance of".ljust(31),
         gateway_assets()[network]["asset_name"],
@@ -93,6 +102,7 @@ def full_balances(network, get_balance):
         / 10 ** gateway_assets()[network]["asset_precision"],
         "\n\n",
     )
+    """
 
 
 def uia_supply():
@@ -168,6 +178,11 @@ def test_deposit(network, get_balance):
         print(xrp_transfer(order, {"test": "test"}))
     elif network == "eos":
         print(eos_transfer(order, {"test": "test"}))
+    elif network == "ltc":
+        print(ltcbtc_transfer(order, {"network": network, "test": "test"}))
+    elif network == "btc":
+        print(ltcbtc_transfer(order, {"network": network, "test": "test"}))
+
     while 1:  # end balance
         input("\n\nwait a few minutes then press Enter to get full balances again\n")
         full_balances(network, get_balance)
@@ -247,7 +262,7 @@ def main():
     print("\033c")
     input("\n\nInitialize your Gateway in another terminal then press Enter\n\n")
     choices = {1: "withdraw", 2: "deposit", 3: "recycle", 4: "balances"}
-    network = input("Enter XRP or EOS to test gateway\n\n   ").lower()
+    network = input("Enter LTC,BTC, XRP or EOS to test gateway\n\n   ").lower()
     print("\ntest options:\n\n", json_dumps(choices))
     selection = int(input("\nchoice: "))
     print(f"\n\nTesting {network} {choices[selection]} ({selection})\n\n")
@@ -258,6 +273,12 @@ def main():
     elif network == "xrp":
         get_balance = xrp_balance
         do_transfer = xrp_transfer
+    elif network == "ltc":
+        get_balance = ltcbtc_balance
+        do_transfer = ltcbtc_transfer
+    elif network == "btc":
+        get_balance = ltcbtc_balance
+        do_transfer = ltcbtc_transfer
     # dispatch test choice
     if selection == 1:
         test_withdrawal(network, get_balance)

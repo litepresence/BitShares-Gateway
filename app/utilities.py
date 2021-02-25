@@ -405,14 +405,12 @@ def wss_handshake(rpc):
     """
 
     while True:
-        nodes = json_ipc(doc="nodes.txt")
         try:
             rpc.close()
         except Exception:
             pass
         try:
-            shuffle(nodes)
-            node = nodes[0]
+            node = shuffle(bitshares_nodes())[0]
             start = time.time()
             rpc = wss(node, timeout=4)
             if time.time() - start < 3:

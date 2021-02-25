@@ -54,7 +54,6 @@ def issue_or_reserve(comptroller):
     # print(listening_to, trx_to)
     # if the transaction is to the address we're listening to
     if listening_to == trx_to:
-        print("hello world")
         # if its a gateway usilizing a single account and the memo is invalid
         if issuer_action == "issue" and not memo_check:
             msg = "received tx with invalid memo"

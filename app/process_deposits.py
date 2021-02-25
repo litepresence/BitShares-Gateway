@@ -90,11 +90,13 @@ class GatewayDepositServer:
         print(req_params, "\n")
         client_id, uia = "", ""
         try:
-            client_id = data["client_id"]
-            uia = data["uia_name"]
+            client_id = req_params["client_id"]
+            uia = req_params["uia_name"]
+            print(1)
         except:
             msg = "invalid request"
             chronicle(comptroller, msg)
+            print(2)
             return
         # translate the incoming uia request to the appropriate network
         network = ""
@@ -106,24 +108,30 @@ class GatewayDepositServer:
             network = "btc"
         elif uia == gateway_assets()["ltc"]["asset_name"]:
             network = "ltc"
+            print(3)
         print("network", network, "\n")
+        print(4)
         comptroller["uia"] = uia
         comptroller["network"] = network
         comptroller["client_id"] = client_id
-        if network in comptroller["scope"]:
+        if network in comptroller["offerings"]:
+            trx_hash = ""
+            print(5)
             # lock an address until this transaction is complete
             if network == "eos":
-                gateway_idx = 0
+                account_idx = 0
             else:
-                gateway_idx = lock_address(network)
-            print("gateway index", gateway_idx, "\n")
-            if gateway_idx is not None:
+                account_idx = lock_address(network)
+            print("gateway index", account_idx, "\n")
+            print(6)
+            if account_idx is not None:
                 timestamp()
                 line_number()
+                print(7)
                 # configure the estimated gateway timing for this network
                 estimate = int(0.5 * timing()[network]["timeout"] / 60)
                 # get the deposit address assigned to this request
-                deposit_address = foreign_accounts()[network][gateway_idx]["public"]
+                deposit_address = foreign_accounts()[network][account_idx]["public"]
                 print("gateway address", deposit_address, "\n")
                 # format a response json to the api request
                 response_body = {
@@ -152,6 +160,7 @@ class GatewayDepositServer:
                     ] += "\n\nALERT: EOS transfers must include a 'trx_hash' memo!!!"
                     response_body["trx_hash"] = trx_hash
                 response_body = json_dumps(response_body)
+                print(8, response_body)
 
                 print(
                     it("red", f"STARTING {network} LISTENER TO ISSUE to {client_id}"),
@@ -160,11 +169,11 @@ class GatewayDepositServer:
                 # update the audit dictionary
                 comptroller["amount"] = None
                 comptroller["trx_hash"] = trx_hash
-                comptroller["gateway_idx"] = gateway_idx
+                comptroller["account_idx"] = account_idx
                 comptroller["deposit_address"] = deposit_address
                 # in subprocess listen for payment from client_id to gateway[idx]
                 # upon receipt issue asset, else timeout
-                listener = Process(target=listener_boilerplate, args=(comptroller),)
+                listener = Process(target=listener_boilerplate, args=(comptroller,),)
                 listener.start()
                 msg = "listener process started"
                 chronicle(comptroller, msg)
@@ -193,6 +202,7 @@ class GatewayDepositServer:
                 }
             )
         time.sleep(5)  # allow some time for listener to start before offering address
+        print(9)
         resp.body = response_body
         resp.status = HTTP_200
 

@@ -102,8 +102,8 @@ COIN1 = [[8, 4], [8, 3], [8, 2], [9, 2], [9, 3], [9, 4]]
 
 NOTES = {
     "D5": 576,
-    "C5": 512, 
-    "D4": 288, 
+    "C5": 512,
+    "D4": 288,
     "A5": 432,
     "REST": 0,
 }
@@ -238,7 +238,6 @@ def animate(note=0, coin_num=0, issuing=True):
         )
         print("\033[20;0H")
 
-
     return note
 
 
@@ -257,7 +256,6 @@ def main():
         print("\033[0m\033[2;0H" + logo + "\033[20;0H")
         text_only()
         print("\033[20;0H")
-
 
 
 if __name__ == "__main__":

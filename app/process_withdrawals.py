@@ -161,19 +161,15 @@ def spawn_block_num_processes():
         """
         processes = {}
         for maven_id in range(BLOCK_MAVENS):
-            processes[maven_id] = Process(
-                target=block_num_maven, args=(maven_id,)
-            )
+            processes[maven_id] = Process(target=block_num_maven, args=(maven_id,))
             processes[maven_id].start()
         while True:
             for maven_id in range(BLOCK_MAVENS):
-                time.sleep(600/BLOCK_MAVENS)
+                time.sleep(600 / BLOCK_MAVENS)
                 processes[maven_id].terminate()
-                processes[maven_id] = Process(
-                    target=block_num_maven, args=(maven_id,)
-                )
+                processes[maven_id] = Process(target=block_num_maven, args=(maven_id,))
                 processes[maven_id].start()
-            
+
     process = Process(target=num_processes)
     process.start()
 
@@ -187,9 +183,7 @@ def spawn_block_processes(new_blocks):
     """
     processes = {}
     for maven_id in range(BLOCK_MAVENS):
-        processes[maven_id] = Process(
-            target=block_maven, args=(maven_id, new_blocks)
-        )
+        processes[maven_id] = Process(target=block_maven, args=(maven_id, new_blocks))
         processes[maven_id].start()
     for maven_id in range(BLOCK_MAVENS):
         processes[maven_id].join(6)
@@ -206,7 +200,7 @@ def block_num_maven(maven_id):
     while True:
         try:
             # after 100 uses switch nodes
-            if not randint(0,100):
+            if not randint(0, 100):
                 rpc = wss_handshake(rpc)
             # ensure correct blocktime
             ret = wss_query(rpc, ["database", "get_dynamic_global_properties", []])
@@ -229,7 +223,7 @@ def block_num_maven(maven_id):
             time.sleep(2)
         except Exception:
             rpc = wss_handshake(rpc)
-        
+
 
 def block_maven(maven_id, new_blocks):
     """
@@ -250,10 +244,10 @@ def block_maven(maven_id, new_blocks):
                 assert isinstance(ret, list)
                 blocks[block_num] = ret
             json_ipc(doc=doc, text=json_dumps(blocks))
-            break         
+            break
         except Exception:
             rpc = wss_handshake(rpc)
-    #print(maven_id, new_blocks)
+    # print(maven_id, new_blocks)
 
 
 def rpc_account_id(rpc, account_name):
@@ -508,7 +502,7 @@ def withdrawal_listener(comptroller, selection=None):
                                 # FIXME: this if clause makes the listener only funciton
                                 # with transfers; NOTE: dict(options) may periodically
                                 # need updated if the clause is removed
-                                if op[0] == 0: 
+                                if op[0] == 0:
                                     # add the block and transaction numbers to the op
                                     op[1]["block"] = block_num
                                     op[1]["trx"] = item + 1
@@ -526,7 +520,7 @@ def withdrawal_listener(comptroller, selection=None):
         except ValueError as error:
             print("bitshares listener", it("yellow", error))
             continue
-        # equally split no statistical mode 
+        # equally split no statistical mode
         except StatisticsError as Error:
             print("bitshares listener", it("yellow", error))
             continue
