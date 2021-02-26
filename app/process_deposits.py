@@ -40,8 +40,14 @@ from falcon import HTTP_200, App
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses, lock_address
-from config import (contact, foreign_accounts, gateway_assets, offerings,
-                    server_config, timing)
+from config import (
+    contact,
+    foreign_accounts,
+    gateway_assets,
+    offerings,
+    server_config,
+    timing,
+)
 from listener_boilerplate import listener_boilerplate
 from utilities import chronicle, it, line_number, milleseconds, timestamp
 
@@ -150,11 +156,9 @@ class GatewayDepositServer:
                     "contact": contact(),
                 }
                 if network == "eos":  # eos deposts will require a hashed memo
-                    trx_hash = str(
-                        sha256(
-                            str(client_id).encode("utf-8") + str(nonce).encode("utf-8")
-                        )
-                    )
+                    trx_hash = sha256(
+                        str(client_id).encode("utf-8") + str(nonce).encode("utf-8")
+                    ).hexdigest()[-24:]
                     response_body[
                         "msg"
                     ] += "\n\nALERT: EOS transfers must include a 'trx_hash' memo!!!"

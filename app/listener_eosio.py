@@ -174,15 +174,17 @@ def listener_eosio(comptroller):
 
     NOTE: eosio has a complex block structure:
     :dict(block["transactions"][i]["trx"]["transaction"]["actions"][j])
-        :key str("name") # 'transfer' etc.
-        :key dict("data") # keys: [to, from, quantity]
-        :key srt("account") # !!! SECURITY WARN, MUST BE: 'eosio.token' !!!
+        :key str("name") 'transfer' etc.
+        :key dict("data") keys: [to, from, quantity]
+        :key srt("account") !!! SECURITY WARN, MUST BE: 'eosio.token' !!!
 
     :dict(comproller) contains full audit trail and these pertinent keys:
-      :key int(account_idx) # from gateway_state.py
-      :key str(issuer_action) # reserve, issue, or None in unit test case
-      :key str(client_id) #1.2.X
-      :key int(nonce) # the millesecond label for this listening event
+      :key int(account_idx) from gateway_state.py
+      :key str(issuer_action) reserve, issue, or None in unit test case
+      :key str(client_id) 1.2.X
+      :key int(nonce) the millesecond label for this listening event
+      :key list(new_blocks) initially empty, thereafter any unsearched block nums
+      :key list(checked_blocks) initially start block num, thereafter all checked
 
     for reserving withdrawals two additional comptroller keys are available:
       :key float(withdrawal_amount)
@@ -198,7 +200,9 @@ def listener_eosio(comptroller):
     new_blocks = comptroller["new_blocks"]
     checked_blocks = comptroller["checked_blocks"]
     # hash the client id and nonce to be checked vs the transaction memo
-    trx_hash = str(sha256(str(client_id).encode("utf-8") + str(nonce).encode("utf-8")))
+    trx_hash = sha256(
+        str(client_id).encode("utf-8") + str(nonce).encode("utf-8")
+    ).hexdigest()[-24:]
     # using multiprocessing, get any new unchecked blocks
     blocks = eos_block_cache(new_blocks)
     # with new cache of blocks, check every block from last check till now

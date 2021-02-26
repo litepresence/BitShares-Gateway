@@ -143,10 +143,12 @@ def listener_ripple(comptroller):
             issue or reserve uia upon receipt of gateway transfer
 
     :dict(comproller) contains full audit trail and these pertinent keys:
-      :key int(account_idx) # from gateway_state.py
-      :key str(issuer_action) # reserve, issue, or None in unit test case
-      :key str(client_id) #1.2.X
-      :key int(nonce) # the millesecond label for this listening event
+      :key int(account_idx) from gateway_state.py
+      :key str(issuer_action) reserve, issue, or None in unit test case
+      :key str(client_id) 1.2.X
+      :key int(nonce) the millesecond label for this listening event
+      :key list(new_blocks) initially empty, thereafter any unsearched block nums
+      :key list(checked_blocks) initially start block num, thereafter all checked
 
     for reserving withdrawals two additional comptroller keys are available:
       :key float(withdrawal_amount)

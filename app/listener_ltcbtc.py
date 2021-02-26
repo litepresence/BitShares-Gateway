@@ -76,7 +76,7 @@ def get_received_by(address, comptroller):
         time.sleep(0.02 * iteration ** 2)
         try:
             access = create_access(comptroller["network"])
-            return float(precisely(float(access.getreceivedbyaddress(address)), 8))
+            return float(precisely(float(access.getreceivedbyaddress(address, 2)), 8))
         except Exception as error:
             print(f"get_received_by {network} access failed {error.args}")
         iteration += 1
@@ -115,6 +115,9 @@ def listener_ltcbtc(comptroller):
       :key str(issuer_action): reserve, issue, or None in unit test case
       :key str(client_id): ie. 1.2.X
       :key int(nonce): the millesecond label for this listening event
+      :key list(new_blocks) initially empty, thereafter any unsearched block nums
+      :key list(checked_blocks) initially start block num, thereafter all checked
+      :key float(tare) starting get_received_by for this address / nonce
 
     for reserving withdrawals two additional comptroller keys are available:
       :key float(withdrawal_amount):

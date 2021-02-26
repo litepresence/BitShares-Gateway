@@ -179,7 +179,7 @@ def listener_boilerplate(comptroller):
         # after timeout, break the while loop; if deposit: release the address
         elapsed = comptroller["elapsed"] = time.time() - start
         if elapsed > timing()[network]["timeout"]:
-            print(f"nonce {nonce}", it("red", f"{network.upper} GATEWAY TIMEOUT"))
+            print(it("red", f"NONCE {nonce} {network.upper()} GATEWAY TIMEOUT"))
             if issuer_action == "issue":
                 unlock_address(network, account_idx, timing()[network]["pause"])
             msg = "listener timeout"
