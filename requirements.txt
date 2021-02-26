@@ -1,9 +1,15 @@
-falcon 
-pybitshares 
-eosiopy 
-requests
-websocket-client
-secp256k1
-ecdsa
-aioxrpy
-python-bitcoinrpc
+##
+## Gateway:
+##
+falcon==3.0.0a2
+secp256k1==0.13.2
+requests==2.25.1
+websocket-client==0.57.0
+ecdsa==0.13.3
+##
+## Blockchain libs:
+##
+bitshares==0.7.0
+aioxrpy==1.0.0
+eosiopy==0.1.4
+python-bitcoinrpc==1.0
