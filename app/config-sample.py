@@ -37,6 +37,17 @@ def offerings():
     return ["eos", "xrp", "ltc", "btc"]
 
 
+def processes():
+    """
+    select which processes to enable
+    """
+    return {
+        "ingots": False,  # return fund to zero index account
+        "deposits": True,  # api server for issuing uia
+        "withdrawals": False,  # bitshares listener for returning and reserving uia
+    }
+
+
 def contact():
     """
     gateway admin support email
@@ -50,9 +61,17 @@ def server_config():
     """
     return {
         "url": "192.168.0.3",  # note the actual host url will be displayed at startup
-        "port": 1337,
+        "port": 4018,
         "route": "gateway",
     }
+
+
+def logo():
+    """
+    enable/disable startup logo animation and audio
+    disabling the animation will disable both
+    """
+    return {"animate": False, "audio": True}
 
 
 def fees():
@@ -83,6 +102,8 @@ def fees():
             "flat": 0,  # BTC
             "percent": 0,  # percent
         },
+        "ada": {"tx": 0, "flat": 0, "percent": 0,},  # ADA  # ADA  # percent
+        "eth": {"tx": 0, "flat": 0, "percent": 0,},  # ETH  # ETH  # percent
     }
 
 
@@ -146,6 +167,7 @@ def issuing_chain():
     #   "id": "39f5e2ede1f8bc1a3a54a7914414e3779e33193f1f5693510e73cb7a87617447",
     # }
 
+
 def gateway_assets():
     """
     # gateway user issued assets
@@ -187,6 +209,24 @@ def gateway_assets():
             "issuer_public": "",  # bitshares account name
             "issuer_private": "",  # wif
         },
+        "ada": {
+            "asset_id": "",  # "1.3.x"
+            "dynamic_id": "",  # "2.3.x" same x as asset_id
+            "asset_name": "",  # all caps
+            "asset_precision": 0,  # int()
+            "issuer_id": "",  # "1.2.x"
+            "issuer_public": "",  # bitshares account name
+            "issuer_private": "",  # wif
+        },
+        "eth": {
+            "asset_id": "",  # "1.3.x"
+            "dynamic_id": "",  # "2.3.x" same x as asset_id
+            "asset_name": "",  # all caps
+            "asset_precision": 0,  # int()
+            "issuer_id": "",  # "1.2.x"
+            "issuer_public": "",  # bitshares account name
+            "issuer_private": "",  # wif
+        },
     }
 
 
@@ -198,60 +238,40 @@ def foreign_accounts():
         # eosio account name and wif
         # Note: eosio list should include only ONE account; multiplexing
         # is via memo nonce.
-        "eos": [
-            {
-                "public": "",  # eosio account name
-                "private": "",  # wif
-            },
-        ],
+        "eos": [{"public": "", "private": "",},],  # eosio account name  # wif
         # List of Ripple foreign chain gateway accounts, min 2
         "xrp": [
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
             # etc.
         ],
         # List of Bitcoin foreign chain gateway accounts, min 2
         # Here use "WIF compressed" and "Address 1 compressed"
         "btc": [
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
             # etc.
         ],
         # List of Litcoin foreign chain gateway accounts, min 2
         # Here use "WIF compressed" and "Address 1 compressed"
         "ltc": [
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
-            {
-                "public": "",
-                "private": "",
-            },
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            # etc.
+        ],
+        "ada": [
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            # etc.
+        ],
+        "eth": [
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
+            {"public": "", "private": "",},
             # etc.
         ],
     }
@@ -267,20 +287,10 @@ def test_accounts():
             "public": "",  # bitshares account name
             "private": "",  # wif
         },
-        "eos": {
-            "public": "",  # eosio account name
-            "private": "",  # wif
-        },
-        "xrp": {
-            "public": "",
-            "private": "",
-        },
-        "ltc": {  # address compressed / wif compressed
-            "public": "",
-            "private": "",
-        },
-        "btc": {  # address compressed / wif compressed
-            "public": "",
-            "private": "",
-        },
+        "eos": {"public": "", "private": "",},  # eosio account name  # wif
+        "xrp": {"public": "", "private": "",},
+        "ltc": {"public": "", "private": "",},  # address compressed / wif compressed
+        "btc": {"public": "", "private": "",},  # address compressed / wif compressed
+        "ada": {"public": "", "private": "",},
+        "eth": {"public": "", "private": "",},
     }
