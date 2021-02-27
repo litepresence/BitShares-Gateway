@@ -25,12 +25,14 @@ a collection of shared utilities for Graphene Python Gateway
 # pylint: disable=too-many-branches, too-many-statements
 
 # STANDARD PYTHON MODULES
+import base64
 import datetime
 import inspect
 import os
 import time
 import traceback
 from calendar import timegm
+from hashlib import sha256
 from json import dumps as json_dumps
 from json import loads as json_loads
 from random import choice, random, shuffle
@@ -41,6 +43,24 @@ from websocket import create_connection as wss
 
 # BITSHARES GATEWAY MODULES
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
+
+
+def encode_memo(client_id, nonce):
+    """
+    encode memos for transaction hashes when using single gateway address
+    first 10 characters of lowercase base32(sha256(client_id+nonce))
+    ~1,000,000,000,000,000 unique values; chances of a clash are quite small
+    """
+    return (
+        base64.b32encode(
+            bytearray(
+                sha256(bytearray(str(client_id) + str(nonce), "utf-8")).hexdigest(),
+                "utf-8",
+            )
+        )
+        .decode("utf-8")
+        .lower()[:10]
+    )
 
 
 def milleseconds():
@@ -403,24 +423,20 @@ def wss_handshake(rpc):
     """
     Create a websocket handshake
     """
-
+    nodes = bitshares_nodes()
     while True:
         try:
             rpc.close()
         except Exception:
             pass
         try:
-            node = shuffle(bitshares_nodes())[0]
+            node = shuffle(nodes)[0]
             start = time.time()
             rpc = wss(node, timeout=4)
             if time.time() - start < 3:
-                # print(node)
                 break
         except Exception:
-            nodes = [n for n in nodes if n != node]
-            if len(nodes) < 7:
-                nodes = bitshares_nodes()
-            json_ipc(doc="nodes.txt", text=json_dumps(nodes))
+            print(node, "failed to connect")
     return rpc
 
 

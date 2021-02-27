@@ -37,11 +37,11 @@ import time
 from random import randint as rint
 
 # BITSHARES GATEWAY MODULES
-from config import logo
+from config import logo_config
 from utilities import it
 
-AUDIO = logo()["audio"]
-ANIMATE = logo()["animate"]
+AUDIO = logo_config()["audio"]
+ANIMATE = logo_config()["animate"]
 
 SPEED = 1.1
 

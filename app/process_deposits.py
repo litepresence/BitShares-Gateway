@@ -29,7 +29,6 @@ Falcon API Server for Gateway Deposit Requests
 
 # STANDARD PYTHON MODULES
 import time
-from hashlib import sha256
 from json import dumps as json_dumps
 from multiprocessing import Process
 from subprocess import PIPE, Popen
@@ -40,16 +39,11 @@ from falcon import HTTP_200, App
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses, lock_address
-from config import (
-    contact,
-    foreign_accounts,
-    gateway_assets,
-    offerings,
-    server_config,
-    timing,
-)
+from config import (contact, foreign_accounts, gateway_assets, offerings,
+                    server_config, timing)
 from listener_boilerplate import listener_boilerplate
-from utilities import chronicle, it, line_number, milleseconds, timestamp
+from utilities import (chronicle, encode_memo, it, line_number, milleseconds,
+                       timestamp)
 
 # GLOBALS
 STDOUT, _ = Popen(["hostname", "-I"], stdout=PIPE, stderr=PIPE).communicate()
@@ -156,9 +150,7 @@ class GatewayDepositServer:
                     "contact": contact(),
                 }
                 if network == "eos":  # eos deposts will require a hashed memo
-                    trx_hash = sha256(
-                        str(client_id).encode("utf-8") + str(nonce).encode("utf-8")
-                    ).hexdigest()[-24:]
+                    trx_hash = encode_memo(client_id, nonce)
                     response_body[
                         "msg"
                     ] += "\n\nALERT: EOS transfers must include a 'trx_hash' memo!!!"
@@ -191,7 +183,7 @@ class GatewayDepositServer:
                         "server_time": nonce,
                         "msg": f"oops! all {uia} gateway addresses are in use, "
                         + "please try again later",
-                        "contact": contact,
+                        "contact": contact(),
                     }
                 )
         else:
@@ -202,7 +194,7 @@ class GatewayDepositServer:
                     "response": "error",
                     "server_time": nonce,
                     "msg": f"{uia} is an invalid gateway UIA, please try again",
-                    "contact": contact,
+                    "contact": contact(),
                 }
             )
         time.sleep(5)  # allow some time for listener to start before offering address

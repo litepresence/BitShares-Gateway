@@ -34,7 +34,7 @@ from config import (foreign_accounts, gateway_assets, server_config,
                     test_accounts)
 from process_withdrawals import rpc_balances, rpc_get_objects
 from signing_eosio import eos_balance, eos_transfer
-from signing_ltcbtc import ltcbtc_balance, ltcbtc_transfer, ltcbtc_balances
+from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
 from signing_ripple import xrp_balance, xrp_transfer
 from utilities import wss_handshake
 
@@ -56,7 +56,7 @@ def gate_balances(network, get_balance):
     check gateway xrp balances
     """
     for gate in foreign_accounts()[network]:
-        comptroller = {"network":network}
+        comptroller = {"network": network}
         print(
             f"Gateway {network} balance for".ljust(30),
             gate["public"],

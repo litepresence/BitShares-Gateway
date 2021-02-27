@@ -47,7 +47,6 @@ triggers:
 import time
 import traceback
 from ctypes import c_wchar_p
-from hashlib import sha256
 from json import dumps as json_dumps
 from multiprocessing import Manager, Process, Value
 
@@ -56,11 +55,12 @@ from requests import post
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import unlock_address  # NOTE not actually used
-from config import foreign_accounts, gateway_assets, nil, timing
+from config import foreign_accounts, gateway_assets, timing
 from issue_or_reserve import issue_or_reserve
 from nodes import eosio_node
 from signing_bitshares import issue, reserve
-from utilities import chronicle, it, line_number, precisely, roughly, timestamp
+from utilities import (chronicle, encode_memo, it, line_number, precisely,
+                       roughly, timestamp)
 
 
 def get_block_number(_):
@@ -200,9 +200,7 @@ def listener_eosio(comptroller):
     new_blocks = comptroller["new_blocks"]
     checked_blocks = comptroller["checked_blocks"]
     # hash the client id and nonce to be checked vs the transaction memo
-    trx_hash = sha256(
-        str(client_id).encode("utf-8") + str(nonce).encode("utf-8")
-    ).hexdigest()[-24:]
+    trx_hash = encode_memo(client_id, nonce)
     # using multiprocessing, get any new unchecked blocks
     blocks = eos_block_cache(new_blocks)
     # with new cache of blocks, check every block from last check till now

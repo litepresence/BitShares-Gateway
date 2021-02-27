@@ -36,7 +36,7 @@ triggers:
 import time
 
 # BITSHARES GATEWAY MODULES
-from config import foreign_accounts, nil
+from config import foreign_accounts
 from issue_or_reserve import issue_or_reserve
 from utilities import create_access, precisely
 

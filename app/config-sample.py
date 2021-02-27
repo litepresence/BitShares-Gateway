@@ -66,7 +66,7 @@ def server_config():
     }
 
 
-def logo():
+def logo_config():
     """
     enable/disable startup logo animation and audio
     disabling the animation will disable both
