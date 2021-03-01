@@ -1,5 +1,5 @@
 r"""
-listener_eosio.py
+parachain_eosio.py
  ╔═══════════════════════════╗
  ║ ╦═╗╦╔╦╗╔═╗╦ ╦╔═╗╦═╗╔═╗╔═╗ ║
  ║ ╠═╣║ ║ ╚═╗╠═╣╠═╣╠╦╝╠═ ╚═╗ ║
@@ -18,12 +18,7 @@ listener_eosio.py
  ╚═══════════════════════════╝
 WTFPL litepresence.com Jan 2021
 
-EOSIO Block Ops Listener
-
-triggers:
-
-    issue UIA upon deposited foreign coin
-    reserve UIA upon confirmed withdrawal
+EOSIO parachain builder
 """
 
 # FIXME enable flat fee and percent fee for gateway use
@@ -43,6 +38,7 @@ triggers:
 #     /api-reference/index#operation/get_block_header_state   << confirmations
 # {protocol}://{host}:{port}/v1/chain/get_block_header_state
 
+
 # STANDARD PYTHON MODULES
 import time
 import traceback
@@ -59,29 +55,8 @@ from config import foreign_accounts, gateway_assets, timing
 from issue_or_reserve import issue_or_reserve
 from nodes import eosio_node
 from signing_bitshares import issue, reserve
-from utilities import (chronicle, encode_memo, it, line_number, precisely,
-                       roughly, timestamp)
-
-
-def get_block_number(_):
-    """
-    get current eosio block number
-    :param _: required for cross chain compatability but not applicable to eosio
-    :return int(irr_block):
-    """
-    timeout = timing()["eos"]["request"]
-    url = eosio_node() + "/v1/chain/get_info"
-    iteration = 0
-    while True:
-        try:
-            ret = post(url, timeout=timeout).json()
-            irr_block = ret["last_irreversible_block_num"]
-            break
-        except Exception as error:
-            print(f"get_irreversible_block access failed {error.args}")
-        iteration += 1
-
-    return irr_block
+from utilities import (chronicle, encode_memo, it, json_ipc, line_number,
+                       precisely, roughly, timestamp)
 
 
 def verify_eosio_account(account, comptroller):
@@ -109,6 +84,27 @@ def verify_eosio_account(account, comptroller):
         msg = "invalid address"
         chronicle(comptroller, msg)
     return is_account
+
+
+def get_block_number(_):
+    """
+    get current eosio block number
+    :param _: required for cross chain compatability but not applicable to eosio
+    :return int(irr_block):
+    """
+    timeout = timing()["eos"]["request"]
+    url = eosio_node() + "/v1/chain/get_info"
+    iteration = 0
+    while True:
+        try:
+            ret = post(url, timeout=timeout).json()
+            irr_block = ret["last_irreversible_block_num"]
+            break
+        except Exception as error:
+            print(f"get_irreversible_block access failed {error.args}")
+        iteration += 1
+
+    return irr_block
 
 
 def eos_block_cache(new_blocks):
@@ -164,50 +160,21 @@ def eos_block_cache(new_blocks):
     return blocks
 
 
-def listener_eosio(comptroller):
+def apodize_block_data(comptroller, new_blocks):
     """
-    for every block from initialized until detected
-        check for transaction to the gateway
-            issue or reserve uia upon receipt of gateway transfer
+    build a parachain fragment of all new blocks
 
-    NOTE: use multiprocessing to process fast moving blocks concurrently
-
-    NOTE: eosio has a complex block structure:
-    :dict(block["transactions"][i]["trx"]["transaction"]["actions"][j])
-        :key str("name") 'transfer' etc.
-        :key dict("data") keys: [to, from, quantity]
-        :key srt("account") !!! SECURITY WARN, MUST BE: 'eosio.token' !!!
-
-    :dict(comproller) contains full audit trail and these pertinent keys:
-      :key int(account_idx) from gateway_state.py
-      :key str(issuer_action) reserve, issue, or None in unit test case
-      :key str(client_id) 1.2.X
-      :key int(nonce) the millesecond label for this listening event
-      :key list(new_blocks) initially empty, thereafter any unsearched block nums
-      :key list(checked_blocks) initially start block num, thereafter all checked
-
-    for reserving withdrawals two additional comptroller keys are available:
-      :key float(withdrawal_amount)
-      :key str(client_address)
-
-    updates the comptroller then :calls: issue_or_reserve()
-
-    :return dict(comtroller) # updated audit dictionary
+    :return dict(parachain) with int(block_num) keys
+        and value dict() containing normalized transactions with keys:
+        ["to", "from", "memo", "hash", "asset", "amount"]
     """
-    # localize the audit trail
-    nonce = comptroller["nonce"]
-    client_id = comptroller["client_id"]
-    new_blocks = comptroller["new_blocks"]
-    checked_blocks = comptroller["checked_blocks"]
-    # hash the client id and nonce to be checked vs the transaction memo
-    trx_hash = encode_memo(client_id, nonce)
+    chronicle(comptroller, "initilizing parachain")
+    parachain = {}
     # using multiprocessing, get any new unchecked blocks
     blocks = eos_block_cache(new_blocks)
     # with new cache of blocks, check every block from last check till now
     for block_num in new_blocks:
-        if block_num not in checked_blocks:
-            checked_blocks.append(block_num)
-        comptroller["block_num"] = block_num
+        transfers = []
         transactions = []
         try:
             # get each new irreversible block, extract the transactions
@@ -233,9 +200,13 @@ def listener_eosio(comptroller):
                     qty = action["data"]["quantity"]
                     trx_asset = qty.split(" ")[1].upper()
                     trx_amount = float(qty.split(" ")[0])
-                    str_amount = comptroller["str_amount"] = precisely(trx_amount, 8)
                     action_name = action["name"]
                     action_account = action["account"]
+                    trx_to = action["data"]["to"]
+                    trx_from = action["data"]["from"]
+                    trx_memo = action["data"]["memo"].replace(" ", "")
+                    trx_hash = trx["trx"]["id"]
+
                 except:
                     pass
                 # sort by tranfer ops
@@ -244,27 +215,20 @@ def listener_eosio(comptroller):
                     action_account == "eosio.token"
                     and action_name == "transfer"
                     and trx_asset == "EOS"
+                    and trx_amount > 0.01
+                    and len(trx_memo) <= 10
                 ):
-                    # print("transfer detected")
-                    # extract transfer op data
-                    trx_to = action["data"]["to"]
-                    trx_from = action["data"]["from"]
-                    trx_memo = action["data"]["memo"].replace(" ", "")
-                    # issue UIA to client_id
-                    # upon receipt of their foreign funds
-                    # eos deposits will use one address
-                    # distinguish between deposits by memo
-                    memo_check = bool(trx_memo == trx_hash)
-                    comptroller["trx_action"] = action
-                    comptroller["trx_hash"] = trx_hash
-                    # update the audit trail
-                    comptroller["trx_to"] = trx_to
-                    comptroller["trx_from"] = trx_from
-                    comptroller["str_amount"] = str_amount
-                    comptroller["trx_amount"] = trx_amount
-                    comptroller["memo_check"] = memo_check
-                    comptroller["checked_blocks"] = checked_blocks
-                    # issue or reserve and return the modified audit trail
-                    comptroller = issue_or_reserve(comptroller)
-
-    return comptroller
+                    # print(trx)
+                    # build transfer dict and append to transfer list
+                    transfer = {
+                        "to": trx_to,
+                        "from": trx_from,
+                        "memo": trx_memo,
+                        "hash": trx_hash,
+                        "asset": trx_asset,
+                        "amount": trx_amount,
+                    }
+                    transfers.append(transfer)
+        # build parachain fragment of transfers for new blocks
+        parachain[str(block_num)] = transfers
+    return parachain

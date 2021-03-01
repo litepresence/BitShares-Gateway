@@ -36,14 +36,14 @@ from pprint import pprint
 # BITSHARES GATEWAY MODULES
 from address_allocator import unlock_address
 from config import foreign_accounts, gateway_assets, timing
-from listener_eosio import get_block_number as get_eosio_block_number
-from listener_eosio import listener_eosio, verify_eosio_account
-from listener_ltcbtc import get_block_number as get_ltcbtc_block_number
-from listener_ltcbtc import (get_received_by, listener_ltcbtc,
-                             verify_ltcbtc_account)
-from listener_ripple import get_block_number as get_ripple_block_number
-from listener_ripple import listener_ripple, verify_ripple_account
-from utilities import chronicle, it, xterm
+from issue_or_reserve import issue_or_reserve
+from parachain_eosio import get_block_number as get_eosio_block_number
+from parachain_eosio import verify_eosio_account
+from parachain_ltcbtc import get_block_number as get_ltcbtc_block_number
+from parachain_ltcbtc import verify_ltcbtc_account
+from parachain_ripple import get_block_number as get_ripple_block_number
+from parachain_ripple import verify_ripple_account
+from utilities import chronicle, encode_memo, it, json_ipc, precisely, xterm
 
 
 def get_block_number(comptroller):
@@ -74,20 +74,6 @@ def verifier_specific(comptroller):
     return dispatch[network]
 
 
-def listener_specific(comptroller):
-    """
-    launch the chain specific listener for this network
-    """
-    network = comptroller["network"]
-    dispatch = {
-        "ltc": listener_ltcbtc,
-        "btc": listener_ltcbtc,
-        "eos": listener_eosio,
-        "xrp": listener_ripple,
-    }
-    return dispatch[network](comptroller)
-
-
 def listener_boilerplate(comptroller):
     """
     for every block from initialized until detected
@@ -106,12 +92,14 @@ def listener_boilerplate(comptroller):
 
     :return None
     """
+    color = xterm()
     start = time.time()
     # localize the comptroller values
-    issuer_action = comptroller["issuer_action"]
-    account_idx = comptroller["account_idx"]
-    network = comptroller["network"]
     nonce = comptroller["nonce"]
+    network = comptroller["network"]
+    client_id = comptroller["client_id"]
+    account_idx = comptroller["account_idx"]
+    issuer_action = comptroller["issuer_action"]
     # localize configuration for this network
     uia = gateway_assets()[network]["asset_name"]
     uia_id = gateway_assets()[network]["asset_id"]
@@ -147,37 +135,29 @@ def listener_boilerplate(comptroller):
     print("Start Block:", start_block_num, "\n")
     # update the audit trail
     comptroller["uia"] = uia
-    comptroller["complete"] = False  # signal to break the while loop
     comptroller["uia_id"] = uia_id
+    comptroller["complete"] = False  # signal to break the while loop
     comptroller["direction"] = direction
     comptroller["listening_to"] = listening_to
+    comptroller["client_address"] = client_address
     comptroller["gateway_address"] = gateway_address
     comptroller["start_block_num"] = start_block_num
-    comptroller["client_address"] = client_address
     comptroller["withdrawal_amount"] = withdrawal_amount
-    comptroller["color"] = color = xterm()
-    comptroller["new_blocks"] = []
-    comptroller["checked_blocks"] = [start_block_num]
-
     print("NONCE", nonce, "LISTENING TO", listening_to)
-    if network in ["ltc", "btc"]:
-        comptroller["tare"] = get_received_by(listening_to, comptroller)
-    else:
-        comptroller["tare"] = 0
     # iterate through irreversible block data
     while 1:
         wait = {
-            "ltc": 30,
+            "ltc": 60,
             "btc": 60,
-            "xrp": 1,
-            "eos": 0.1,
+            "xrp": 3,
+            "eos": 6,
         }
         time.sleep(wait[network])
         # if issue/reserve has signaled to break the while loop
         if comptroller["complete"]:
             break
         # after timeout, break the while loop; if deposit: release the address
-        elapsed = comptroller["elapsed"] = time.time() - start
+        elapsed = time.time() - start
         if elapsed > timing()[network]["timeout"]:
             print(it("red", f"NONCE {nonce} {network.upper()} GATEWAY TIMEOUT"))
             if issuer_action == "issue":
@@ -185,25 +165,22 @@ def listener_boilerplate(comptroller):
             msg = "listener timeout"
             chronicle(comptroller, msg)
             break
-        # otherwise, get the latest block number
-        comptroller["current_block"] = current_block_num = get_block_number(comptroller)
+        # otherwise, get the latest block number from the parachain
+        parachain = json_ipc(f"parachain_{network}.txt")
+        parachain_keys = [int(x) for x in list(parachain.keys())]
+        current_block_num = max(parachain_keys)
         # get the maximum block number we have checked
         max_checked_block = max(checked_blocks)
-        # if comptroller["issuer_action"] is None:
-        #    print("current block", current_block_num, "max checked", max_checked_block)
         # if there are any new blocks
         if current_block_num > max_checked_block + 1:
             # announce every block from last checked till now
             new_blocks = [*range(max_checked_block + 1, current_block_num)]
-            # update the comptroller with a list of the latest blocks
-            comptroller["new_blocks"] = new_blocks
-            # launch a listener for the network specified in the comptroller
-            # update the comptroller dict and return it
-            comptroller = listener_specific(comptroller)
-            checked_blocks = comptroller["checked_blocks"]
             # announce the latest blocks
+            str_also = ""
             if len(new_blocks) > 1:
-                print(it(color, new_blocks[:-1]))
+                min_new = str(min(new_blocks[:-1]))
+                max_new = str(max(new_blocks[:-1]))
+                str_also = "ALSO: [" + min_new + " ... " + max_new + "]"
             print(
                 it(color, f"NONCE {nonce}"),
                 it("yellow", f"{network}".upper()),
@@ -212,7 +189,41 @@ def listener_boilerplate(comptroller):
                 it(color, time.ctime()[11:19]),
                 it(color, "GATE"),
                 it("yellow", account_idx),
+                it(color, str_also),
             )
+            # update the comptroller with a list of the latest blocks
+            # hash the client id and nonce to be checked vs the transaction memo
+            memo = encode_memo(client_id, nonce)
+            # with new cache of blocks, check every block from last check till now
+            for block_num in new_blocks:
+                if block_num not in checked_blocks:
+                    checked_blocks.append(block_num)
+                transfers = []
+                try:
+                    transfers = parachain[str(block_num)]
+                except:
+                    msg = f"missing block data for {block_num}"
+                    chronicle(comptroller, msg)
+                for transfer in transfers:
+                    # extract the transaction data
+                    trx_to = transfer["to"]
+                    trx_hash = transfer["hash"]
+                    trx_memo = transfer["memo"]
+                    trx_from = transfer["from"]
+                    trx_amount = transfer["amount"]
+                    # update the audit trail
+                    comptroller["trx_to"] = trx_to
+                    comptroller["elapsed"] = elapsed
+                    comptroller["trx_hash"] = trx_hash
+                    comptroller["trx_memo"] = trx_memo
+                    comptroller["trx_from"] = trx_from
+                    comptroller["trx_block"] = block_num
+                    comptroller["str_amount"] = precisely(trx_amount, 8)
+                    comptroller["trx_amount"] = trx_amount
+                    comptroller["memo_check"] = bool(memo == trx_memo)
+                    comptroller["current_block"] = current_block_num
+                    # issue or reserve and return the modified audit trail
+                    comptroller = issue_or_reserve(comptroller)
 
 
 def main():

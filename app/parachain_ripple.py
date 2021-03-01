@@ -1,5 +1,5 @@
 r"""
-listener_ripple.py
+parachain_ripple.py
  ╔═══════════════════════════╗
  ║ ╦═╗╦╔╦╗╔═╗╦ ╦╔═╗╦═╗╔═╗╔═╗ ║
  ║ ╠═╣║ ║ ╚═╗╠═╣╠═╣╠╦╝╠═ ╚═╗ ║
@@ -18,12 +18,7 @@ listener_ripple.py
  ╚═══════════════════════════╝
 WTFPL litepresence.com Jan 2021
 
-Ripple Ledger Ops Listener
-
-triggers:
-
-    issue UIA upon deposited foreign coin
-    reserve UIA upon confirmed withdrawal
+Ripple parachain builder
 """
 
 # FIXME enable flat fee and percent fee for gateway use
@@ -40,9 +35,48 @@ from requests import get
 
 # BITSHARES GATEWAY MODULES
 from config import timing
-from issue_or_reserve import issue_or_reserve
 from nodes import ripple_node
-from utilities import chronicle, precisely
+from utilities import chronicle
+
+
+def verify_ripple_account(account, comptroller):
+    """
+    check to see if the address is valid
+
+    :param str(account): a ripple address
+    :param dict(coptroller): specify network and allow for logging of failure
+    :return bool(): is this a valid address?
+    """
+    network = comptroller["network"]
+    timeout = timing()[network]["request"]
+    data = json_dumps(
+        {
+            "method": "account_info",
+            "params": [
+                {
+                    "account": account,
+                    "strict": True,
+                    "ledger_index": "current",
+                    "queue": True,
+                }
+            ],
+        }
+    )
+    iteration = 0
+    while True:
+        try:
+            ret = get(ripple_node(), data=data, timeout=timeout).json()["result"]
+            break
+        except Exception as error:
+            print(f"verify_ripple_account access failed {error.args}")
+        iteration += 1
+
+    is_account = True
+    if "account_data" not in ret.keys():
+        is_account = False
+        comptroller["msg"] = "invalid address"
+        chronicle(comptroller)
+    return bool(is_account)
 
 
 def get_block_number(_):
@@ -96,98 +130,48 @@ def get_ledger(ledger):
     return ret
 
 
-def verify_ripple_account(account, comptroller):
+def apodize_block_data(comptroller, new_blocks):
     """
-    check to see if the address is valid
+    build a parachain fragment of all new blocks
 
-    :param str(account): a ripple address
-    :param dict(coptroller): specify network and allow for logging of failure
-    :return bool(): is this a valid address?
+    :return dict(parachain) with int(block_num) keys
+        and value dict() containing normalized transactions with keys:
+        ["to", "from", "memo", "hash", "asset", "amount"]
     """
-    network = comptroller["network"]
-    timeout = timing()[network]["request"]
-    data = json_dumps(
-        {
-            "method": "account_info",
-            "params": [
-                {
-                    "account": account,
-                    "strict": True,
-                    "ledger_index": "current",
-                    "queue": True,
-                }
-            ],
-        }
-    )
-    iteration = 0
-    while True:
-        try:
-            ret = get(ripple_node(), data=data, timeout=timeout).json()["result"]
-            break
-        except Exception as error:
-            print(f"verify_ripple_account access failed {error.args}")
-        iteration += 1
-
-    is_account = True
-    if "account_data" not in ret.keys():
-        is_account = False
-        comptroller["msg"] = "invalid address"
-        chronicle(comptroller)
-    return bool(is_account)
-
-
-def listener_ripple(comptroller):
-    """
-    for every block from initialized until detected
-        check for transaction to the gateway
-            issue or reserve uia upon receipt of gateway transfer
-
-    :dict(comproller) contains full audit trail and these pertinent keys:
-      :key int(account_idx) from gateway_state.py
-      :key str(issuer_action) reserve, issue, or None in unit test case
-      :key str(client_id) 1.2.X
-      :key int(nonce) the millesecond label for this listening event
-      :key list(new_blocks) initially empty, thereafter any unsearched block nums
-      :key list(checked_blocks) initially start block num, thereafter all checked
-
-    for reserving withdrawals two additional comptroller keys are available:
-      :key float(withdrawal_amount)
-      :key str(client_address)
-
-    updates the comptroller then :calls: issue_or_reserve()
-
-    :return dict(comtroller) # updated audit dictionary
-    """
-    # localize the audit trail
-    new_blocks = comptroller["new_blocks"]
-    checked_blocks = comptroller["checked_blocks"]
+    chronicle(comptroller, "initilizing parachain")
+    parachain = {}
     # check every block from last check till now
     for block_num in new_blocks:
-        comptroller["block_num"] = block_num
-        # append this block number to the list of checked numbers
-        if block_num not in checked_blocks:
-            checked_blocks.append(block_num)
-        # ensure no duplicates in the checked list
-        checked_blocks = sorted(list(set(checked_blocks)))
+        transfers = []
         # get each new validated ledger
         transactions = get_ledger(block_num)
         # iterate through all transactions in the list of transactions
         for trx in transactions:
+            # non XRP transaction amounts are in dict format
             if not isinstance(trx["Amount"], dict):
                 # localize data from the transaction
                 trx_amount = int(trx["Amount"]) / 10 ** 6  # convert drops to xrp
-                trx_from = trx["Account"]
                 trx_to = trx["Destination"]
-                comptroller["trx"] = trx
-                memo_check = True  # not applicable to xrp
-                str_amount = comptroller["str_amount"] = precisely(trx_amount, 8)
-                # update the audit trail
-                comptroller["trx_to"] = trx_to
-                comptroller["trx_from"] = trx_from
-                comptroller["str_amount"] = str_amount
-                comptroller["trx_amount"] = trx_amount
-                comptroller["memo_check"] = memo_check
-                comptroller["checked_blocks"] = checked_blocks  # return checked!
-                # issue or reserve and return the modified audit trail
-                comptroller = issue_or_reserve(comptroller)
-    return comptroller
+                trx_from = trx["Account"]
+                trx_hash = trx["hash"]
+                trx_asset = "XRP"
+                trx_memo = ""
+                try:
+                    trx_memo = trx["DestinationTag"]
+                except:
+                    pass
+                if len(str(trx_memo)) == 10 and trx_amount > 0.1:
+                    # build transfer dict and append to transfer list
+                    # print(trx)
+                    transfer = {
+                        "to": trx_to,
+                        "from": trx_from,
+                        "memo": trx_memo,
+                        "hash": trx_hash,
+                        "asset": trx_asset,
+                        "amount": trx_amount,
+                    }
+                    transfers.append(transfer)
+        # build parachain fragment of transfers for new blocks
+        parachain[str(block_num)] = transfers
+    return parachain

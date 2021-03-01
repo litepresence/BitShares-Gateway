@@ -48,6 +48,23 @@ def processes():
     }
 
 
+def parachain_params():
+    """
+    listeners do not actually make external requests
+    they rely upon windowed parachains cached locally
+    adjust parameters of these windows here
+    """
+    return {
+        "xrp": {
+            "window": 30,  # number of blocks to keep for this chain
+            "pause": 3,  # pause before attempting to collect new block data
+        },
+        "eos": {"window": 120, "pause": 6,},
+        "ltc": {"window": 20, "pause": 60,},
+        "btc": {"window": 10, "pause": 60,},
+    }
+
+
 def contact():
     """
     gateway admin support email

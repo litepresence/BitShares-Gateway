@@ -27,7 +27,7 @@ from pprint import pprint
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, test_accounts
-from listener_ltcbtc import get_received_by
+from parachain_ltcbtc import get_received_by
 from signing_eosio import eos_balance, eos_transfer
 from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
 from signing_ripple import xrp_balance, xrp_transfer

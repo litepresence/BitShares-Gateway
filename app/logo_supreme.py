@@ -37,7 +37,7 @@ import time
 from random import randint as rint
 
 # BITSHARES GATEWAY MODULES
-from config import logo_config
+from config import logo_config, offerings
 from utilities import it
 
 AUDIO = logo_config()["audio"]
@@ -227,7 +227,7 @@ def animate(note=0, coin_num=0, issuing=True):
             f"\033[{position[0]+2};{position[1]+1}H"
             + it(COLOR[0], LOGO_MAT[position[0]][position[1]], True)
         )
-        print("\033[20;0H")
+        print("\033[25;0H")
         bell(PLAYLIST[note][1], PLAYLIST[note][0])
         note += 1
         if note > 12:
@@ -236,7 +236,7 @@ def animate(note=0, coin_num=0, issuing=True):
             f"\033[0m\033[{position[0]+2};{position[1]+1}H"
             + it(COLOR[4], LOGO_MAT[position[0]][position[1]])
         )
-        print("\033[20;0H")
+        print("\033[25;0H")
 
     return note
 
@@ -249,13 +249,19 @@ def main():
     print("\033c")
     print(logo)
     text_only()
+    print("\n")
+    print(it("red", "OFFERINGS\n\n") + it(45, offerings()), "\n")
+    print(it("red", "INITIALIZING PARACHAINS\n"))
     if ANIMATE:
         note = 0
         for _ in range(3):
             note = animate(note, rint(0, 3), rint(0, 1))
-        print("\033[0m\033[2;0H" + logo + "\033[20;0H")
+        print("\033[0m\033[2;0H" + logo + "\033[25;0H")
         text_only()
-        print("\033[20;0H")
+        print("\033[25;0H")
+    else:
+        # either way wait to allow parachains to initialize
+        time.sleep(5)
 
 
 if __name__ == "__main__":

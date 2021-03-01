@@ -29,8 +29,8 @@ import time
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, max_unspent, nil, offerings, timing
-from listener_ltcbtc import get_block_number as get_ltcbtc_block_number
-from listener_ripple import get_block_number as get_xrp_block_number
+from parachain_ltcbtc import get_block_number as get_ltcbtc_block_number
+from parachain_ripple import get_block_number as get_xrp_block_number
 from signing_eosio import eos_balance
 from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
 from signing_ripple import xrp_balance, xrp_transfer
@@ -73,7 +73,7 @@ def ingot_casting(comptroller):
                         if balance > nil()[network]:
                             timestamp()
                             line_number()
-                            print(it("red", f"{network} RECYCLER"))
+                            print(it("red", f"{network.upper()} RECYCLER"))
                             print(gateway["public"], balance, "\n")
                             # finalize the order
                             order["private"] = gateway["private"]
@@ -107,7 +107,7 @@ def ingot_casting(comptroller):
                     block_num = get_ltcbtc_block_number(comptroller)
                     # consolidate balances into a single ingot
                     order = {
-                        "to": foreign_accounts()[network]["public"][0],
+                        "to": foreign_accounts()[network][0]["public"],
                         "quantity": ltcbtc_balance(None, comptroller),
                     }
                     ingot = ltcbtc_transfer(order, comptroller, pay_fee=True)

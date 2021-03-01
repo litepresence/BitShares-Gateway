@@ -45,22 +45,25 @@ from websocket import create_connection as wss
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
 
 
-def encode_memo(client_id, nonce):
+def encode_memo(client_id, nonce, base32=True):
     """
     encode memos for transaction hashes when using single gateway address
     first 10 characters of lowercase base32(sha256(client_id+nonce))
     ~1,000,000,000,000,000 unique values; chances of a clash are quite small
     """
-    return (
-        base64.b32encode(
-            bytearray(
-                sha256(bytearray(str(client_id) + str(nonce), "utf-8")).hexdigest(),
-                "utf-8",
-            )
+    msg = str(client_id) + str(nonce)
+    sha_msg = sha256(bytearray(msg, "utf-8")).hexdigest()
+    if base32:
+        # 10 digit base 32 ~1,000,000,000,000,000 unique values
+        trx_id = (
+            base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
         )
-        .decode("utf-8")
-        .lower()[:10]
-    )
+    else:
+        # 10 digit integer, eg for ripple network
+        # FIXME: E1101: Instance of 'str' has no 'hex' member (no-member)
+        trx_id = str(int(sha_msg.encode(encoding="utf_8").hex(), 16))
+        trx_id = int(("1" + trx_id)[:10]) if trx_id[0] == "0" else int(trx_id)
+    return trx_id
 
 
 def milleseconds():
@@ -430,7 +433,8 @@ def wss_handshake(rpc):
         except Exception:
             pass
         try:
-            node = shuffle(nodes)[0]
+            shuffle(nodes)
+            node = nodes[0]
             start = time.time()
             rpc = wss(node, timeout=4)
             if time.time() - start < 3:

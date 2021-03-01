@@ -38,17 +38,18 @@ import time
 import traceback
 from json import dumps as json_dumps
 from json import loads as json_loads
-from multiprocessing import Process
 from random import randint
 from statistics import StatisticsError, mode
+from threading import Thread
+from multiprocessing import Process
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, gateway_assets, offerings
 from decoder_ring import ovaltine
 from listener_boilerplate import listener_boilerplate
-from listener_eosio import verify_eosio_account
-from listener_ltcbtc import verify_ltcbtc_account
-from listener_ripple import verify_ripple_account
+from parachain_eosio import verify_eosio_account
+from parachain_ltcbtc import verify_ltcbtc_account
+from parachain_ripple import verify_ripple_account
 from nodes import bitshares_nodes
 from signing_eosio import eos_transfer
 from signing_ltcbtc import ltcbtc_transfer
@@ -149,7 +150,7 @@ def choice():
 
 def spawn_block_num_processes():
     """
-    Several processes will concurrently update an array
+    Several threads will concurrently update an array
     with external calls for irreversible block number
     later the statistical mode of the array will be used
     :return None:
@@ -170,13 +171,13 @@ def spawn_block_num_processes():
                 processes[maven_id] = Process(target=block_num_maven, args=(maven_id,))
                 processes[maven_id].start()
 
-    process = Process(target=num_processes)
+    process = Thread(target=num_processes)
     process.start()
 
 
 def spawn_block_processes(new_blocks):
     """
-    Launch several subprocesses to gather block data
+    Launch several threads to gather block data
     :param int(start):
     :param int(stop):
     :return None:
@@ -398,13 +399,12 @@ def withdraw(comptroller):
         # confirm we're dealing with a legit client address
         if verify(order["to"]):
             # upon hearing real foreign chain transfer, reserve the uia equal
-            listener = Process(target=listener_boilerplate, args=(comptroller),)
-            listener.start()
+            listener = Thread(target=listener_boilerplate, args=(comptroller),)
             listener.start()
             msg = f"spawn {network} withdrawal listener to reserve {order['quantity']}"
             print(it("red", msg), "\n")
             chronicle(comptroller, msg)
-            # wait for listener subprocess to initialize then transfer the order
+            # wait for listener thread to initialize then transfer the order
             time.sleep(30)
             timestamp()
             line_number()
@@ -441,7 +441,7 @@ def withdrawal_listener(comptroller, selection=None):
     # print(comptroller["offerings"], "\n\n")
     while True:
         try:
-            # get the irreversible block number reported by each maven subprocess
+            # get the irreversible block number reported by each maven thread
             block_numbers = []
             for maven_id in range(BLOCK_MAVENS):
                 block_num = json_ipc(doc=f"block_num_maven_{maven_id}.txt")[0]
@@ -463,7 +463,7 @@ def withdrawal_listener(comptroller, selection=None):
                     blocks = {}
                     for block_num in new_blocks:
                         blocks[block_num] = []
-                    # get block transactions from each maven subprocesses
+                    # get block transactions from each maven thread
                     for maven_id in range(BLOCK_MAVENS):
                         maven_blocks = json_ipc(doc=f"block_maven_{maven_id}.txt")
                         # for each block that has past since last update
@@ -509,7 +509,7 @@ def withdrawal_listener(comptroller, selection=None):
                                     op[1]["operation"] = (op[0], options[op[0]])
                                     comptroller["op"] = op
                                     # spin off withdrawal act so listener can continue
-                                    process = Process(target=act, args=(comptroller,))
+                                    process = Thread(target=act, args=(comptroller,))
                                     process.start()
                 last_block_num = curr_block_num
             time.sleep(6)

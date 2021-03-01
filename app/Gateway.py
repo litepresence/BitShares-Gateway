@@ -55,14 +55,16 @@ import os
 import time
 from multiprocessing import Process
 from sys import version as python_version
+from threading import Thread
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses
 from config import offerings, processes
 from process_deposits import deposit_server
 from process_ingots import ingot_casting
+from process_parachains import spawn_parachains
 from process_withdrawals import withdrawal_listener
-from utilities import chronicle, it
+from utilities import chronicle, it, json_ipc, xterm
 
 
 def withdrawal_process(comptroller):
@@ -167,6 +169,19 @@ def logo_process():
     process.terminate()
 
 
+def parachain_process(comptroller):
+    """
+    launch a subprocess for gathering block data
+    the data will be written to disk via json_ipc
+    each listener event will then rely on parachain data
+    instead of external calls
+    """
+    comptroller["process"] = "parachains"
+    process = Process(target=spawn_parachains, args=(comptroller,))
+    process.daemon = False
+    process.start()
+
+
 def main():
     """
     setting state of all inbound accounts to available
@@ -175,8 +190,6 @@ def main():
     subprocess bitshares withdrawal listener
     """
     print("\033c\n")
-    # print(it("yellow", logo()))
-    logo_process()
     # initialize financial incident reporting for audits
     comptroller = {}
     comptroller["session_unix"] = int(time.time())
@@ -187,10 +200,25 @@ def main():
         comptroller["network"] = network
         chronicle(comptroller, msg)
     comptroller["network"] = ""
+    parachain_process(comptroller)
+    # give half second to ctrl+shift+\ to break program on startup for dev
+    time.sleep(0.5)
+    logo_process()
     # set state machine to "all incoming accounts available"
     for network in comptroller["offerings"]:
         initialize_addresses(network)
-    print("\nofferings " + it(45, comptroller["offerings"]), "\n")
+    # confirm parachains are running
+    for network in offerings():
+        try:
+            parachain_cache = json_ipc(f"parachain_{network}.txt")
+            # extract the block numbers in the cached parachain
+            parachain_nums = sorted([str(i) for i in list(parachain_cache.keys())])
+            # determine the maximum block number on record
+            latest_block = max(parachain_nums)
+            print(it(xterm(), f"{network.upper()} BLOCK {latest_block}"))
+        except:
+            raise ChildProcessError(network, "parachain failed to initialize")
+    print("")
     # spawn 3 concurrent gateway subprocesses; passing the comptroller
     if processes()["ingots"]:
         ingot_process(comptroller)

@@ -30,8 +30,8 @@ Falcon API Server for Gateway Deposit Requests
 # STANDARD PYTHON MODULES
 import time
 from json import dumps as json_dumps
-from multiprocessing import Process
 from subprocess import PIPE, Popen
+from threading import Thread
 from wsgiref.simple_server import make_server
 
 # THIRD PARTY MODULES
@@ -169,7 +169,7 @@ class GatewayDepositServer:
                 comptroller["deposit_address"] = deposit_address
                 # in subprocess listen for payment from client_id to gateway[idx]
                 # upon receipt issue asset, else timeout
-                listener = Process(target=listener_boilerplate, args=(comptroller,),)
+                listener = Thread(target=listener_boilerplate, args=(comptroller,),)
                 listener.start()
                 msg = "listener process started"
                 chronicle(comptroller, msg)
