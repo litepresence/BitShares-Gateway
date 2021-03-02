@@ -35,7 +35,7 @@ from pprint import pprint
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import unlock_address
-from config import foreign_accounts, gateway_assets, timing
+from config import foreign_accounts, gateway_assets, timing, parachain_params
 from issue_or_reserve import issue_or_reserve
 from parachain_eosio import get_block_number as get_eosio_block_number
 from parachain_eosio import verify_eosio_account
@@ -57,7 +57,7 @@ def get_block_number(comptroller):
         "eos": get_eosio_block_number,
         "xrp": get_ripple_block_number,
     }
-    return dispatch[network](comptroller)
+    return dispatch[network](network)
 
 
 def verifier_specific(comptroller):
@@ -100,6 +100,8 @@ def listener_boilerplate(comptroller):
     client_id = comptroller["client_id"]
     account_idx = comptroller["account_idx"]
     issuer_action = comptroller["issuer_action"]
+    # hash the client id and nonce to be checked vs the transaction memo
+    memo = encode_memo(network, client_id, nonce)
     # localize configuration for this network
     uia = gateway_assets()[network]["asset_name"]
     uia_id = gateway_assets()[network]["asset_id"]
@@ -110,7 +112,7 @@ def listener_boilerplate(comptroller):
         # issuing uia to cover deposit of foreign tokens
         # monitor the gateway address
         # awaiting unknown amount of incoming funds
-        direction = "INCOMING"
+        direction = "incoming deposit"
         client_address = None  # not applicable to deposits
         withdrawal_amount = None  # not applicable to deposits
         listening_to = gateway_address
@@ -118,7 +120,7 @@ def listener_boilerplate(comptroller):
         # reserving uia to cover withdrawal of foreign tokens
         # monitor the client address
         # awaiting the specific amount that was withdrawn
-        direction = "OUTGOING"
+        direction = "outgoing withdrawal"
         client_address = comptroller["client_address"]
         withdrawal_amount = comptroller["withdrawal_amount"]
         listening_to = client_address
@@ -130,9 +132,10 @@ def listener_boilerplate(comptroller):
         withdrawal_amount = None
         listening_to = foreign_accounts()[network][0]["public"]
     # initialize the block counter
-    start_block_num = get_block_number(comptroller)
+    parachain = json_ipc(f"parachain_{network}.txt")
+    parachain_keys = [int(x) for x in list(parachain.keys())]
+    start_block_num = max(parachain_keys)
     checked_blocks = [start_block_num]
-    print("Start Block:", start_block_num, "\n")
     # update the audit trail
     comptroller["uia"] = uia
     comptroller["uia_id"] = uia_id
@@ -143,16 +146,11 @@ def listener_boilerplate(comptroller):
     comptroller["gateway_address"] = gateway_address
     comptroller["start_block_num"] = start_block_num
     comptroller["withdrawal_amount"] = withdrawal_amount
-    print("NONCE", nonce, "LISTENING TO", listening_to)
+    print("Start Block:", start_block_num, "NONCE", nonce, "LISTENING TO", listening_to)
     # iterate through irreversible block data
     while 1:
-        wait = {
-            "ltc": 60,
-            "btc": 60,
-            "xrp": 3,
-            "eos": 6,
-        }
-        time.sleep(wait[network])
+        # limit parachain read frequency
+        time.sleep(parachain_params()[network]["pause"])
         # if issue/reserve has signaled to break the while loop
         if comptroller["complete"]:
             break
@@ -161,7 +159,8 @@ def listener_boilerplate(comptroller):
         if elapsed > timing()[network]["timeout"]:
             print(it("red", f"NONCE {nonce} {network.upper()} GATEWAY TIMEOUT"))
             if issuer_action == "issue":
-                unlock_address(network, account_idx, timing()[network]["pause"])
+                if network not in ["eos", "xrp"]:
+                    unlock_address(network, account_idx, timing()[network]["pause"])
             msg = "listener timeout"
             chronicle(comptroller, msg)
             break
@@ -180,8 +179,9 @@ def listener_boilerplate(comptroller):
             if len(new_blocks) > 1:
                 min_new = str(min(new_blocks[:-1]))
                 max_new = str(max(new_blocks[:-1]))
-                str_also = "ALSO: [" + min_new + " ... " + max_new + "]"
+                str_also = "[" + min_new + " ... " + max_new + "]"
             print(
+                it(color, comptroller["event_id"]),
                 it(color, f"NONCE {nonce}"),
                 it("yellow", f"{network}".upper()),
                 it(color, "BLOCK"),
@@ -191,18 +191,16 @@ def listener_boilerplate(comptroller):
                 it("yellow", account_idx),
                 it(color, str_also),
             )
-            # update the comptroller with a list of the latest blocks
-            # hash the client id and nonce to be checked vs the transaction memo
-            memo = encode_memo(client_id, nonce)
             # with new cache of blocks, check every block from last check till now
             for block_num in new_blocks:
                 if block_num not in checked_blocks:
                     checked_blocks.append(block_num)
-                transfers = []
                 try:
                     transfers = parachain[str(block_num)]
                 except:
+                    transfers = []
                     msg = f"missing block data for {block_num}"
+                    # FIXME fallback mechanism?
                     chronicle(comptroller, msg)
                 for transfer in transfers:
                     # extract the transaction data
@@ -211,6 +209,10 @@ def listener_boilerplate(comptroller):
                     trx_memo = transfer["memo"]
                     trx_from = transfer["from"]
                     trx_amount = transfer["amount"]
+                    # test the memo on pertinent network deposits
+                    memo_check = True
+                    if issuer_action == "issue" and network in ["eos", "xrp"]:
+                        memo_check = bool(memo == trx_memo)
                     # update the audit trail
                     comptroller["trx_to"] = trx_to
                     comptroller["elapsed"] = elapsed
@@ -220,7 +222,7 @@ def listener_boilerplate(comptroller):
                     comptroller["trx_block"] = block_num
                     comptroller["str_amount"] = precisely(trx_amount, 8)
                     comptroller["trx_amount"] = trx_amount
-                    comptroller["memo_check"] = bool(memo == trx_memo)
+                    comptroller["memo_check"] = memo_check
                     comptroller["current_block"] = current_block_num
                     # issue or reserve and return the modified audit trail
                     comptroller = issue_or_reserve(comptroller)

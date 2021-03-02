@@ -34,7 +34,7 @@ def offerings():
     """
     initialize only the gateways listed in offerings
     """
-    return ["eos", "xrp", "ltc", "btc"]
+    return ["eos", "xrp", "ltc", "btc"]  # "eth", "ada"
 
 
 def processes():
@@ -44,7 +44,7 @@ def processes():
     return {
         "ingots": False,  # return fund to zero index account
         "deposits": True,  # api server for issuing uia
-        "withdrawals": False,  # bitshares listener for returning and reserving uia
+        "withdrawals": True,  # bitshares listener for returning and reserving uia
     }
 
 
@@ -57,11 +57,13 @@ def parachain_params():
     return {
         "xrp": {
             "window": 30,  # number of blocks to keep for this chain
-            "pause": 3,  # pause before attempting to collect new block data
+            "pause": 3,  # pause before attempting to read from or write to parachain
         },
         "eos": {"window": 120, "pause": 6,},
         "ltc": {"window": 20, "pause": 60,},
         "btc": {"window": 10, "pause": 60,},
+        "eth": {"window": 10, "pause": 60,},  # FIXME
+        "ada": {"window": 10, "pause": 60,},  # FIXME
     }
 
 
@@ -88,7 +90,7 @@ def logo_config():
     enable/disable startup logo animation and audio
     disabling the animation will disable both
     """
-    return {"animate": False, "audio": True}
+    return {"animate": True, "audio": True}
 
 
 def fees():
@@ -119,8 +121,8 @@ def fees():
             "flat": 0,  # BTC
             "percent": 0,  # percent
         },
-        "ada": {"tx": 0, "flat": 0, "percent": 0,},  # ADA  # ADA  # percent
-        "eth": {"tx": 0, "flat": 0, "percent": 0,},  # ETH  # ETH  # percent
+        "ada": {"tx": 0, "flat": 0, "percent": 0,},  # FIXME
+        "eth": {"tx": 0, "flat": 0, "percent": 0,},  # FIXME
     }
 
 
@@ -130,13 +132,16 @@ def timing():
     """
     return {
         "eos": {
-            "pause": 600,  # keep address out of use after timeout
-            "timeout": 1800,  # listener timeout
+            "pause": 0,  # keep address out of use after timeout
+            "timeout": 7200,  # listener timeout
+            "estimate": 300,  # estimated deposit confirm time
             "request": 5,  # api request timeout
         },
-        "xrp": {"pause": 600, "timeout": 1800, "request": 5,},
-        "ltc": {"pause": 900, "timeout": 3600, "request": 5,},
-        "btc": {"pause": 900, "timeout": 7200, "request": 5,},
+        "xrp": {"pause": 0, "timeout": 7200, "estimate": 600, "request": 5,},
+        "ltc": {"pause": 900, "timeout": 7200, "estimate": 900, "request": 5,},
+        "btc": {"pause": 900, "timeout": 14400, "estimate": 3600, "request": 5,},
+        "eth": {"pause": 900, "timeout": 7200, "estimate": 900, "request": 5,},  # FIXME
+        "ada": {"pause": 900, "timeout": 7200, "estimate": 900, "request": 5,},  # FIXME
         "ingot": 1800,
     }
 
@@ -153,6 +158,8 @@ def nil():
         "xrp": 27,
         "ltc": 0.065,
         "btc": 0.00027,
+        "ada": 0,  # FIXME ??
+        "eth": 0,  # FIXME ??
     }
 
 
@@ -165,6 +172,8 @@ def max_unspent():
         "xrp": None,  # not applicable / utxo only
         "ltc": 10,
         "btc": 10,
+        "ada": None,  # FIXME ??
+        "eth": None,  # FIXME ??
     }
 
 
@@ -172,17 +181,18 @@ def issuing_chain():
     """
     core token and chain id
     # bitsharesbase/chains.py
-    """
+    
+    # BitShares Mainnet
     return {
         "prefix": "BTS",  # core token
         "id": "4018d7844c78f6a6c41c6a552b898022310fc5dec06da467ee7905a8dad512c8",
     }
-    # Other chains:
-    # BitShares public testnet:
-    # {
-    #   "prefix": "TEST",
-    #   "id": "39f5e2ede1f8bc1a3a54a7914414e3779e33193f1f5693510e73cb7a87617447",
-    # }
+    """
+    # BitShares Testnet
+    return {
+        "prefix": "TEST",
+        "id": "39f5e2ede1f8bc1a3a54a7914414e3779e33193f1f5693510e73cb7a87617447",
+    }
 
 
 def gateway_assets():

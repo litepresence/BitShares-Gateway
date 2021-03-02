@@ -29,9 +29,11 @@ Falcon API Server for Gateway Deposit Requests
 
 # STANDARD PYTHON MODULES
 import time
+from copy import deepcopy
 from json import dumps as json_dumps
 from subprocess import PIPE, Popen
 from threading import Thread
+from multiprocessing import Process
 from wsgiref.simple_server import make_server
 
 # THIRD PARTY MODULES
@@ -43,7 +45,7 @@ from config import (contact, foreign_accounts, gateway_assets, offerings,
                     server_config, timing)
 from listener_boilerplate import listener_boilerplate
 from utilities import (chronicle, encode_memo, it, line_number, milleseconds,
-                       timestamp)
+                       timestamp, event_id, json_ipc)
 
 # GLOBALS
 STDOUT, _ = Popen(["hostname", "-I"], stdout=PIPE, stderr=PIPE).communicate()
@@ -71,6 +73,10 @@ class GatewayDepositServer:
         Server RESPONSE is deposit address and timeout
         After timeout or deposit return address to text pipe list
         """
+        # increment the event identifier
+        previous_id = int(json_ipc("deposit_id.txt"))
+        deposit_id = previous_id + 1
+        json_ipc("deposit_id.txt", json_dumps(deposit_id))
         # localize the comptroller to this get request
         comptroller = self.comptroller
         # create a millesecond nonce to log this event
@@ -80,23 +86,25 @@ class GatewayDepositServer:
         # update the comptroller and chronicle this request
         comptroller["req_params"] = req_params
         comptroller["nonce"] = nonce
+        comptroller["event_id"] = event_id("D", deposit_id)
         comptroller["issuer_action"] = "issue"
         msg = "received deposit request"
         chronicle(comptroller, msg)
         timestamp()
         line_number()
-        print(it("red", "DEPOSIT SERVER RECEIVED A GET REQUEST"), "\n")
-        print(SERVER_URL)
-        print(req_params, "\n")
+        print(it("red", "DEPOSIT SERVER RECEIVED REQUEST"), SERVER_URL, req_params)
+        # assuming the client is using an approved wallet this should never fail
         client_id, uia = "", ""
+        comptroller["uia"] = uia
+        comptroller["client_id"] = client_id
         try:
             client_id = req_params["client_id"]
             uia = req_params["uia_name"]
-            print(1)
+            comptroller["uia"] = uia
+            comptroller["client_id"] = client_id
         except:
             msg = "invalid request"
             chronicle(comptroller, msg)
-            print(2)
             return
         # translate the incoming uia request to the appropriate network
         network = ""
@@ -108,31 +116,29 @@ class GatewayDepositServer:
             network = "btc"
         elif uia == gateway_assets()["ltc"]["asset_name"]:
             network = "ltc"
-            print(3)
-        print("network", network, "\n")
-        print(4)
-        comptroller["uia"] = uia
+        else:
+            msg = "invalid request"
+            chronicle(comptroller, msg)
+            return
+        # beyond this point we have a valid uia and client_id
+        #print("network", network, "\n")
         comptroller["network"] = network
-        comptroller["client_id"] = client_id
         if network in comptroller["offerings"]:
-            trx_hash = ""
-            print(5)
-            # lock an address until this transaction is complete
-            if network == "eos":
+            if network in ["eos", "xrp"]:
+                # UIA's using memo method will always default to zero idx gateway
                 account_idx = 0
             else:
+                # lock an address until this transaction is complete
                 account_idx = lock_address(network)
-            print("gateway index", account_idx, "\n")
-            print(6)
+            # lock_address will return None if all rotating addresses are in use
             if account_idx is not None:
                 timestamp()
                 line_number()
-                print(7)
                 # configure the estimated gateway timing for this network
-                estimate = int(0.5 * timing()[network]["timeout"] / 60)
+                estimate = int(timing()[network]["estimate"] / 60)
                 # get the deposit address assigned to this request
                 deposit_address = foreign_accounts()[network][account_idx]["public"]
-                print("gateway address", deposit_address, "\n")
+                print("gateway address", deposit_address, "index", account_idx)
                 # format a response json to the api request
                 response_body = {
                     "response": "success",
@@ -141,59 +147,57 @@ class GatewayDepositServer:
                     "gateway_timeout": "30 MINUTES",
                     "msg": (
                         f"Welcome {client_id}, please deposit your gateway issued "
-                        + f"{network} asset, to the {uia} gateway 'deposit_address' "
-                        + "in this response.  Make ONE transfer to this address, "
-                        + "within the gateway_timeout specified. Transactions on "
-                        + f"this network take about {estimate} "
-                        + f"minutes to confirm. "
+                        + f"{network.upper()} asset, to the {uia.upper()} gateway "
+                        + "'deposit_address' in this response.  "
+                        + "Make ONE transfer to this address, "
+                        + "within the 'gateway_timeout' specified. Transactions on "
+                        + f"this network take about {estimate} minutes to confirm. "
                     ),
                     "contact": contact(),
                 }
-                if network == "eos":  # eos deposts will require a hashed memo
-                    trx_hash = encode_memo(client_id, nonce)
-                    response_body[
-                        "msg"
-                    ] += "\n\nALERT: EOS transfers must include a 'trx_hash' memo!!!"
-                    response_body["trx_hash"] = trx_hash
+                memo = ""
+                if network in ["eos", "xrp"]:  # some deposts will require a hashed memo
+                    memo = encode_memo(network, client_id, nonce)
+                    response_body["msg"] += (
+                        f"\n\n*ALERT*: {network.upper()} deposits must include a the "
+                        + "*MEMO* provided in this response!!!"
+                    )
+                    response_body["memo"] = memo
                 response_body = json_dumps(response_body)
-                print(8, response_body)
-
-                print(
-                    it("red", f"STARTING {network} LISTENER TO ISSUE to {client_id}"),
-                    "\n",
-                )
+                print(it("red", f"STARTING {network} LISTENER TO ISSUE to {client_id}"))
                 # update the audit dictionary
                 comptroller["amount"] = None
-                comptroller["trx_hash"] = trx_hash
                 comptroller["account_idx"] = account_idx
+                comptroller["required_memo"] = memo
                 comptroller["deposit_address"] = deposit_address
                 # in subprocess listen for payment from client_id to gateway[idx]
                 # upon receipt issue asset, else timeout
-                listener = Thread(target=listener_boilerplate, args=(comptroller,),)
+                listener = Thread(target=listener_boilerplate, args=(deepcopy(comptroller),))
                 listener.start()
                 msg = "listener process started"
                 chronicle(comptroller, msg)
-                print(f"{network} listener process started", "\n")
             else:
-                msg = "gateway overloaded"
+                msg = f"{uia.upper()} gateway overloaded"
+                print(it("red", msg.upper()))
                 chronicle(comptroller, msg)
                 response_body = json_dumps(
                     {
                         "response": "error",
                         "server_time": nonce,
-                        "msg": f"oops! all {uia} gateway addresses are in use, "
+                        "msg": f"oops! all {uia.upper()} gateway addresses are in use, "
                         + "please try again later",
                         "contact": contact(),
                     }
                 )
         else:
-            msg = "invalid uia"
+            msg = f"{uia.upper()} not listed in offerings"
             chronicle(comptroller, msg)
             response_body = json_dumps(
                 {
                     "response": "error",
                     "server_time": nonce,
-                    "msg": f"{uia} is an invalid gateway UIA, please try again",
+                    "msg": f"oops! {uia.upper()} gateway is currently down for "
+                    + "maintainance, please try again later",
                     "contact": contact(),
                 }
             )
@@ -207,11 +211,12 @@ def deposit_server(comptroller):
     """
     spawn a run forever api server instance and add routing information
     """
+    json_ipc("deposit_id.txt", json_dumps(1))
     app = App()
     app.add_route(f"/{ROUTE}", GatewayDepositServer(comptroller))
     print(it("red", "INITIALIZING DEPOSIT SERVER\n"))
     # print(comptroller["offerings"], "\n")
-    print("serving http at:", it("green", SERVER_URL))
+    print(it(159, "serving http at:"), it("green", SERVER_URL))
     with make_server("", PORT, app) as httpd:
         httpd.serve_forever()
 

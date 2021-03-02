@@ -26,7 +26,7 @@ This is the primary script to be launched by the gateway admin, in terminal:
 
     python3 Gateway.py
 
-Launches 3 concurrent run forever processes:
+Launches several concurrent processes:
 
     1) WITHDRAW AND RESERVE PROCESS
 
@@ -40,7 +40,7 @@ Launches 3 concurrent run forever processes:
 
     provide web api for client to request gateway deposit address
         provide a unique address to deposit foreign tokens
-            listen for incoming foreign tokens
+            listen for incoming foreign tokens on parachains
                 issue uia
 
     3) INGOT PROCESS
@@ -49,13 +49,20 @@ Launches 3 concurrent run forever processes:
         upon finding too many small dust amounts
             consolidate ingots
 
+    4) PARACHAIN PROCESS
+
+    writes apodized blocks of each blockchain in offerings to disk
+
+    5) LOGO PROCESS
+
+    animates the the startup logo allowing a delay for parachains to be built
+
 """
 # STANDARD PYTHON MODULES
 import os
 import time
 from multiprocessing import Process
 from sys import version as python_version
-from threading import Thread
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses
@@ -217,7 +224,8 @@ def main():
             latest_block = max(parachain_nums)
             print(it(xterm(), f"{network.upper()} BLOCK {latest_block}"))
         except:
-            raise ChildProcessError(network, "parachain failed to initialize")
+            print(it("yellow", f"{network.upper()} PARACHAIN FAILED TO INITIALIZE"))
+            raise ChildProcessError()
     print("")
     # spawn 3 concurrent gateway subprocesses; passing the comptroller
     if processes()["ingots"]:

@@ -36,27 +36,28 @@ may also run independently as a block ops listener for any Operation ID
 import os
 import time
 import traceback
+from copy import deepcopy
 from json import dumps as json_dumps
 from json import loads as json_loads
+from multiprocessing import Process
 from random import randint
 from statistics import StatisticsError, mode
 from threading import Thread
-from multiprocessing import Process
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, gateway_assets, offerings
 from decoder_ring import ovaltine
 from listener_boilerplate import listener_boilerplate
+from nodes import bitshares_nodes
 from parachain_eosio import verify_eosio_account
 from parachain_ltcbtc import verify_ltcbtc_account
 from parachain_ripple import verify_ripple_account
-from nodes import bitshares_nodes
 from signing_eosio import eos_transfer
 from signing_ltcbtc import ltcbtc_transfer
 from signing_ripple import xrp_transfer
 from utilities import (block_ops_logo, chronicle, from_iso_date, it, json_ipc,
                        line_number, milleseconds, raw_operations, timestamp,
-                       wss_handshake, wss_query)
+                       wss_handshake, wss_query, event_id)
 
 # CONSTANTS
 BLOCK_MAVENS = min(7, len(bitshares_nodes()))
@@ -313,7 +314,7 @@ def withdraw(comptroller):
     from this definition we trigger a gateway withdrawal event
     release the user's foreign chain funds to the memo
     and burn the returned UIA upon irreversible receipt
-    """
+    """    
     # localize the operation
     op = comptroller["op"]
     # create a list of issuer ids in the current scope of the gateway
@@ -339,6 +340,12 @@ def withdraw(comptroller):
                 chronicle(comptroller, msg)
                 print(it("red", msg))
     if tgm:  # transfer to gateway with a memo
+        # increment the event id
+        previous_id = int(json_ipc("withdrawal_id.txt"))
+        withdrawal_id = previous_id + 1
+        json_ipc("withdrawal_id.txt", json_dumps(withdrawal_id))
+        comptroller["event_id"] = event_id("W", withdrawal_id)
+        
         msg = f"withdrawal request: transfer {uia_id} to gateway with memo"
         print(it("red", msg.upper() + "\n\n"), it("yellow", op), "\n")
         line_number()
@@ -399,7 +406,7 @@ def withdraw(comptroller):
         # confirm we're dealing with a legit client address
         if verify(order["to"]):
             # upon hearing real foreign chain transfer, reserve the uia equal
-            listener = Thread(target=listener_boilerplate, args=(comptroller),)
+            listener = Process(target=listener_boilerplate, args=(deepcopy(comptroller),))
             listener.start()
             msg = f"spawn {network} withdrawal listener to reserve {order['quantity']}"
             print(it("red", msg), "\n")
@@ -434,6 +441,7 @@ def withdrawal_listener(comptroller, selection=None):
     if selection is None:
         selection = 0
         act = withdraw
+    json_ipc("withdrawal_id.txt", json_dumps(1))
     # spawn subprocesses for gathering streaming consensus irreversible block number
     spawn_block_num_processes()
     # continually listen for last block["transaction"]["operations"]
@@ -485,21 +493,25 @@ def withdrawal_listener(comptroller, selection=None):
                     # for example half the nodes are on the next block number
                     blocks = {k: json_loads(mode(v)) for k, v in blocks.items()}
                     # print the blocks we're checking
+                    str_also = ""
                     if len(new_blocks) > 1:
-                        print(it(159, new_blocks[:-1]))
+                        min_new = str(min(new_blocks[:-1]))
+                        max_new = str(max(new_blocks[:-1]))
+                        str_also = "[" + min_new + " ... " + max_new + "]"
                     print(
                         it(45, "BitShares"),
                         it(81, "Irreversible Block"),
                         it("yellow", curr_block_num),
                         it(117, time.ctime()[11:19]),
                         it(159, int(time.time())),
+                        it(45, str_also),
                     )
                     # triple nested:
                     # for each operation, in each transaction, on each block
                     for block_num, transactions in blocks.items():
                         for item, trx in enumerate(transactions):
                             for op in trx["operations"]:
-                                # FIXME: this if clause makes the listener only funciton
+                                # FIXME: this if clause makes the listener only function
                                 # with transfers; NOTE: dict(options) may periodically
                                 # need updated if the clause is removed
                                 if op[0] == 0:

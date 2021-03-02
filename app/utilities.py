@@ -22,7 +22,7 @@ a collection of shared utilities for Graphene Python Gateway
 """
 # DISABLE SELECT PYLINT TESTS
 # pylint: disable=too-many-arguments, broad-except, invalid-name
-# pylint: disable=too-many-branches, too-many-statements
+# pylint: disable=too-many-branches, too-many-statements, no-member
 
 # STANDARD PYTHON MODULES
 import base64
@@ -45,25 +45,23 @@ from websocket import create_connection as wss
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
 
 
-def encode_memo(client_id, nonce, base32=True):
+def encode_memo(network, client_id, nonce):
     """
     encode memos for transaction hashes when using single gateway address
-    first 10 characters of lowercase base32(sha256(client_id+nonce))
-    ~1,000,000,000,000,000 unique values; chances of a clash are quite small
     """
     msg = str(client_id) + str(nonce)
     sha_msg = sha256(bytearray(msg, "utf-8")).hexdigest()
-    if base32:
+    if network == "xrp":
+        # 10 digit base 10, eg for ripple network
+        # NOTE: pylint does not like .hex() but its a pylint bug not a real issue
+        memo = str(int(sha_msg.encode(encoding="utf_8").hex(), 16))[10:20]
+        memo = int(("1" + memo)[:10]) if memo[0] == "0" else int(memo)
+    else:
         # 10 digit base 32 ~1,000,000,000,000,000 unique values
-        trx_id = (
+        memo = (
             base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
         )
-    else:
-        # 10 digit integer, eg for ripple network
-        # FIXME: E1101: Instance of 'str' has no 'hex' member (no-member)
-        trx_id = str(int(sha_msg.encode(encoding="utf_8").hex(), 16))
-        trx_id = int(("1" + trx_id)[:10]) if trx_id[0] == "0" else int(trx_id)
-    return trx_id
+    return memo
 
 
 def milleseconds():
@@ -93,7 +91,6 @@ def create_access(network):
     }
     node = nodes[network]
     if network == "btc":
-
         access = AuthServiceProxy(node[0])
         try:
             access.loadwallet(node[1])
@@ -103,6 +100,11 @@ def create_access(network):
         access = AuthServiceProxy(node[0] + "/wallet/" + node[1])
 
     return access
+
+
+def event_id(prefix, number):
+
+    return prefix + ("0000000000" + str(number))[-10:]
 
 
 def chronicle(comptroller, msg=None):

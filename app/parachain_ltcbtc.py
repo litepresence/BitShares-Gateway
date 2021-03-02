@@ -31,7 +31,7 @@ Litecoin and Bitcoin parachain builder
 import time
 
 # BITSHARES GATEWAY MODULES
-from utilities import create_access, chronicle
+from utilities import chronicle, create_access, precisely
 
 
 def verify_ltcbtc_account(account, comptroller):
@@ -116,7 +116,7 @@ def get_received_by(address, comptroller):
         except Exception as error:
             print(f"get_received_by {network} access failed {error.args}")
         iteration += 1
-        
+
 
 def apodize_block_data(comptroller, new_blocks):
     """

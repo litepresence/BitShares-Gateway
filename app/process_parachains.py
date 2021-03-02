@@ -67,10 +67,14 @@ def spawn_parachains(comptroller):
     """
     for each network listed in offerings launch a parachain subprocess
     """
+    # scrub the parachains
+    for network in offerings():
+        json_ipc(f"parachain_{network}.txt", json_dumps({}))
+
+    # launch parachain writing processes
     parachains = {}
     for network in offerings():
         comptroller["network"] = network
-        json_ipc(f"parachain_{network}.txt", {})
         parachains[network] = Process(target=window_parachain, args=(comptroller,))
         parachains[network].start()
 
@@ -87,6 +91,7 @@ def window_parachain(comptroller):
     json_ipc(f"parachain_{network}.txt", json_dumps(new_parachain))
     params = parachain_params()
     while True:
+        # limit parachain write frequency
         time.sleep(params[network]["pause"])
         # get the current block number
         current_block_num = get_block_number(network)
@@ -119,6 +124,13 @@ def window_parachain(comptroller):
             json_ipc(f"parachain_{network}.txt", json_dumps(windowed_parachain))
 
 
-if __name__ == "__main__":
+def unit_test_parachains():
+    """
+    this should launch parachains in the pipe folder for networks in config offerings()
+    """
+    comptroller = {}
+    spawn_parachains(comptroller)
 
-    spawn_parachains()
+
+if __name__ == "__main__":
+    unit_test_parachains()
