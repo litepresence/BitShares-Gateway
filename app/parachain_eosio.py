@@ -44,7 +44,7 @@ import time
 import traceback
 from ctypes import c_wchar_p
 from json import dumps as json_dumps
-from multiprocessing import Manager, Process, Value
+from threading import Thread
 
 # THIRD PARTY MODULES
 from requests import post
@@ -130,34 +130,29 @@ def eos_block_cache(new_blocks):
         data = json_dumps({"block_num_or_id": str(block_num)})
         iteration = 0
         while True:
+            time.sleep(0.02 * iteration ** 2)
             try:
                 ret = post(url, data=data, timeout=timeout).json()
                 break
             except Exception as error:
                 print(f"get_block access failed {error.args}")
             iteration += 1
-        blocks_pipe[block_num].value = ret
+        blocks_pipe[block_num] = ret
 
-    block_processes = {}  # dictionary of multiprocessing "Process" events
-    blocks_pipe = {}  # dictionary of multiprocessing "Value" pipes
+    block_processes = {}  # dictionary of threads
+    blocks_pipe = {}  # interprocess communication dictionary
     # spawn multpiple processes to gather the "new" blocks
     for block_num in new_blocks:
-        manager = Manager()
-        blocks_pipe[block_num] = manager.Value(c_wchar_p, "")
-        block_processes[block_num] = Process(
+        blocks_pipe[block_num] = 0
+        block_processes[block_num] = Thread(
             target=get_block, args=(block_num, blocks_pipe,)
         )
         block_processes[block_num].start()
-    # join all subprocess back to main process; wait for all to finish
-    for block_num in new_blocks:
-        block_processes[block_num].join()
-    # extract the blocks from each "Value" in blocks_pipe
-    blocks = {}
-    for block_num, block in blocks_pipe.items():
-        # create block number keyed dict of block data dicts
-        blocks[block_num] = block.value
-
-    return blocks
+    while True:
+        time.sleep(0.2)
+        if all(list(blocks_pipe.values())):
+            break
+    return blocks_pipe
 
 
 def apodize_block_data(comptroller, new_blocks):

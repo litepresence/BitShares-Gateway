@@ -45,12 +45,11 @@ from websocket import create_connection as wss
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
 
 
-def encode_memo(network, client_id, nonce):
+def encode_memo(network, seed):
     """
     encode memos for transaction hashes when using single gateway address
     """
-    msg = str(client_id) + str(nonce)
-    sha_msg = sha256(bytearray(msg, "utf-8")).hexdigest()
+    sha_msg = sha256(bytearray(str(seed), "utf-8")).hexdigest()
     if network == "xrp":
         # 10 digit base 10, eg for ripple network
         # NOTE: pylint does not like .hex() but its a pylint bug not a real issue
@@ -64,11 +63,11 @@ def encode_memo(network, client_id, nonce):
     return memo
 
 
-def milleseconds():
+def microseconds():
     """
-    milleseconds as integer
+    nano * 10**3 = micro * 10**3 = milli * 10**3 = second  as integer
     """
-    return int(time.time() * 1000)
+    return int(time.time() * 10**6)
 
 
 def roughly(amount, reference):

@@ -31,12 +31,15 @@ Falcon API Server for Gateway Deposit Requests
 import time
 from copy import deepcopy
 from json import dumps as json_dumps
+from os import urandom
+from random import random, randint, seed
 from subprocess import PIPE, Popen
 from threading import Thread
 from multiprocessing import Process
 from wsgiref.simple_server import make_server
 
 # THIRD PARTY MODULES
+import wsgiserver
 from falcon import HTTP_200, App
 
 # BITSHARES GATEWAY MODULES
@@ -44,7 +47,7 @@ from address_allocator import initialize_addresses, lock_address
 from config import (contact, foreign_accounts, gateway_assets, offerings,
                     server_config, timing)
 from listener_boilerplate import listener_boilerplate
-from utilities import (chronicle, encode_memo, it, line_number, milleseconds,
+from utilities import (chronicle, encode_memo, it, line_number, microseconds,
                        timestamp, event_id, json_ipc)
 
 # GLOBALS
@@ -63,6 +66,7 @@ class GatewayDepositServer:
     # FIXME add api endpoint for flat fees, percent fees, and minimum deposit / withdraw
     def __init__(self, comptroller):
         self.comptroller = comptroller
+        self.deposit_id = 0
 
     def on_get(self, req, resp):
         """
@@ -73,25 +77,25 @@ class GatewayDepositServer:
         Server RESPONSE is deposit address and timeout
         After timeout or deposit return address to text pipe list
         """
-        # increment the event identifier
-        previous_id = int(json_ipc("deposit_id.txt"))
-        deposit_id = previous_id + 1
-        json_ipc("deposit_id.txt", json_dumps(deposit_id))
         # localize the comptroller to this get request
-        comptroller = self.comptroller
+        comptroller = deepcopy(self.comptroller)
+        # seed pseudorandom in a cryptographically secure manner
+        seed(urandom(20))
+        # pause for a random 1/10 of a seocond
+        time.sleep(random()/10)
+        # increment the event identifier
+        self.deposit_id += 1
         # create a millesecond nonce to log this event
-        nonce = milleseconds()
+        nonce = microseconds()
         # extract the incoming parameters to a dictionary
         req_params = dict(req.params)
         # update the comptroller and chronicle this request
         comptroller["req_params"] = req_params
         comptroller["nonce"] = nonce
-        comptroller["event_id"] = event_id("D", deposit_id)
+        comptroller["event_id"] = event_id("D", self.deposit_id)
         comptroller["issuer_action"] = "issue"
         msg = "received deposit request"
         chronicle(comptroller, msg)
-        timestamp()
-        line_number()
         print(it("red", "DEPOSIT SERVER RECEIVED REQUEST"), SERVER_URL, req_params)
         # assuming the client is using an approved wallet this should never fail
         client_id, uia = "", ""
@@ -120,6 +124,9 @@ class GatewayDepositServer:
             msg = "invalid request"
             chronicle(comptroller, msg)
             return
+        # create a unique memo for this event
+        memo = encode_memo(network, randint(10**17, 10**18))
+        comptroller["memo"] = memo
         # beyond this point we have a valid uia and client_id
         #print("network", network, "\n")
         comptroller["network"] = network
@@ -132,8 +139,6 @@ class GatewayDepositServer:
                 account_idx = lock_address(network)
             # lock_address will return None if all rotating addresses are in use
             if account_idx is not None:
-                timestamp()
-                line_number()
                 # configure the estimated gateway timing for this network
                 estimate = int(timing()[network]["estimate"] / 60)
                 # get the deposit address assigned to this request
@@ -155,9 +160,8 @@ class GatewayDepositServer:
                     ),
                     "contact": contact(),
                 }
-                memo = ""
                 if network in ["eos", "xrp"]:  # some deposts will require a hashed memo
-                    memo = encode_memo(network, client_id, nonce)
+                    
                     response_body["msg"] += (
                         f"\n\n*ALERT*: {network.upper()} deposits must include a the "
                         + "*MEMO* provided in this response!!!"
@@ -172,37 +176,37 @@ class GatewayDepositServer:
                 comptroller["deposit_address"] = deposit_address
                 # in subprocess listen for payment from client_id to gateway[idx]
                 # upon receipt issue asset, else timeout
-                listener = Thread(target=listener_boilerplate, args=(deepcopy(comptroller),))
+                listener = Thread(target=listener_boilerplate, args=(comptroller,))
                 listener.start()
                 msg = "listener process started"
                 chronicle(comptroller, msg)
             else:
-                msg = f"{uia.upper()} gateway overloaded"
+                msg = f"{comptroller['event_id']} {uia.upper()} gateway overloaded."
                 print(it("red", msg.upper()))
                 chronicle(comptroller, msg)
                 response_body = json_dumps(
                     {
                         "response": "error",
                         "server_time": nonce,
-                        "msg": f"oops! all {uia.upper()} gateway addresses are in use, "
-                        + "please try again later",
+                        "msg": msg + f"oops! all {uia.upper()} gateway addresses are "
+                        + "in use, please try again later",
                         "contact": contact(),
                     }
                 )
         else:
-            msg = f"{uia.upper()} not listed in offerings"
+            msg = f"{comptroller['event_id']} {uia.upper()} not listed in offerings."
+            print(it("red", msg.upper()))
             chronicle(comptroller, msg)
             response_body = json_dumps(
                 {
                     "response": "error",
                     "server_time": nonce,
-                    "msg": f"oops! {uia.upper()} gateway is currently down for "
+                    "msg": msg + f"oops! {uia.upper()} gateway is currently down for "
                     + "maintainance, please try again later",
                     "contact": contact(),
                 }
             )
-        time.sleep(5)  # allow some time for listener to start before offering address
-        print(9)
+        time.sleep(0.5)  # allow time for listener to start before offering address
         resp.body = response_body
         resp.status = HTTP_200
 
@@ -215,10 +219,10 @@ def deposit_server(comptroller):
     app = App()
     app.add_route(f"/{ROUTE}", GatewayDepositServer(comptroller))
     print(it("red", "INITIALIZING DEPOSIT SERVER\n"))
-    # print(comptroller["offerings"], "\n")
     print(it(159, "serving http at:"), it("green", SERVER_URL))
-    with make_server("", PORT, app) as httpd:
-        httpd.serve_forever()
+    my_apps = wsgiserver.WSGIPathInfoDispatcher({'/': app})
+    server = wsgiserver.WSGIServer(my_apps, host='0.0.0.0', port=PORT, num_threads=100)
+    server.start()
 
 
 def unit_test():

@@ -56,7 +56,7 @@ from signing_eosio import eos_transfer
 from signing_ltcbtc import ltcbtc_transfer
 from signing_ripple import xrp_transfer
 from utilities import (block_ops_logo, chronicle, from_iso_date, it, json_ipc,
-                       line_number, milleseconds, raw_operations, timestamp,
+                       line_number, microseconds, raw_operations, timestamp,
                        wss_handshake, wss_query, event_id)
 
 # CONSTANTS
@@ -284,7 +284,7 @@ def rpc_balances(rpc, account_name, asset_id):
     return balance
 
 
-def print_op(comptroller):
+def print_op(_, comptroller):
     """
     At the end of the main while loop we'll perform some action on every operation
     as a sample, we'll just color some operations and print the op
@@ -304,7 +304,7 @@ def print_op(comptroller):
         print(msg, "\n")
 
 
-def withdraw(comptroller):
+def withdraw(withdrawal_id, comptroller):
     """
     in production print_op is replaced with withdraw
 
@@ -327,7 +327,7 @@ def withdraw(comptroller):
         # extract the uia_id from the op
         uia_id = op[1]["amount"]["asset_id"]
         # assign a nonce and update the comptroller
-        nonce = milleseconds()
+        nonce = microseconds()
         comptroller["nonce"] = nonce
         comptroller["uia_id"] = uia_id
         # check if this is a transfer to our issuer
@@ -340,10 +340,9 @@ def withdraw(comptroller):
                 chronicle(comptroller, msg)
                 print(it("red", msg))
     if tgm:  # transfer to gateway with a memo
-        # increment the event id
-        previous_id = int(json_ipc("withdrawal_id.txt"))
-        withdrawal_id = previous_id + 1
-        json_ipc("withdrawal_id.txt", json_dumps(withdrawal_id))
+        # increment the event id,
+        # NOTE withdrawal_id inherits from withdrawal_listener() local space
+        withdrawal_id += 1
         comptroller["event_id"] = event_id("W", withdrawal_id)
         
         msg = f"withdrawal request: transfer {uia_id} to gateway with memo"
@@ -406,7 +405,8 @@ def withdraw(comptroller):
         # confirm we're dealing with a legit client address
         if verify(order["to"]):
             # upon hearing real foreign chain transfer, reserve the uia equal
-            listener = Process(target=listener_boilerplate, args=(deepcopy(comptroller),))
+            # FIXME do we need to deep copy here?  perhaps not... for good measure:
+            listener = Thread(target=listener_boilerplate, args=(deepcopy(comptroller),))
             listener.start()
             msg = f"spawn {network} withdrawal listener to reserve {order['quantity']}"
             print(it("red", msg), "\n")
@@ -434,8 +434,10 @@ def withdrawal_listener(comptroller, selection=None):
     json_ipc(doc="nodes.txt", text=json_dumps(nodes))
     # create a subfolder for the database; write to file
     create_database()
-    # initialize block number
-    last_block_num = curr_block_num = 0
+    # initialize last block number, current block number, and withdrawal id
+    last_block_num = 0
+    curr_block_num = 0
+    withdrawal_id = 0
     # bypass user input... gateway transfer ops
     act = print_op
     if selection is None:
@@ -521,7 +523,7 @@ def withdrawal_listener(comptroller, selection=None):
                                     op[1]["operation"] = (op[0], options[op[0]])
                                     comptroller["op"] = op
                                     # spin off withdrawal act so listener can continue
-                                    process = Thread(target=act, args=(comptroller,))
+                                    process = Thread(target=act, args=(withdrawal_id, deepcopy(comptroller),))
                                     process.start()
                 last_block_num = curr_block_num
             time.sleep(6)

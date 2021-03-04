@@ -95,13 +95,12 @@ def listener_boilerplate(comptroller):
     color = xterm()
     start = time.time()
     # localize the comptroller values
+    memo = comptroller["memo"]
     nonce = comptroller["nonce"]
     network = comptroller["network"]
     client_id = comptroller["client_id"]
     account_idx = comptroller["account_idx"]
     issuer_action = comptroller["issuer_action"]
-    # hash the client id and nonce to be checked vs the transaction memo
-    memo = encode_memo(network, client_id, nonce)
     # localize configuration for this network
     uia = gateway_assets()[network]["asset_name"]
     uia_id = gateway_assets()[network]["asset_id"]
@@ -157,7 +156,7 @@ def listener_boilerplate(comptroller):
         # after timeout, break the while loop; if deposit: release the address
         elapsed = time.time() - start
         if elapsed > timing()[network]["timeout"]:
-            print(it("red", f"NONCE {nonce} {network.upper()} GATEWAY TIMEOUT"))
+            print(it("red", f"NONCE {memo} {network.upper()} GATEWAY TIMEOUT"))
             if issuer_action == "issue":
                 if network not in ["eos", "xrp"]:
                     unlock_address(network, account_idx, timing()[network]["pause"])
@@ -182,7 +181,7 @@ def listener_boilerplate(comptroller):
                 str_also = "[" + min_new + " ... " + max_new + "]"
             print(
                 it(color, comptroller["event_id"]),
-                it(color, f"NONCE {nonce}"),
+                it(color, f"{memo} {nonce}"),
                 it("yellow", f"{network}".upper()),
                 it(color, "BLOCK"),
                 it("yellow", max(new_blocks)),
