@@ -34,7 +34,7 @@ from parachain_ltcbtc import apodize_block_data as apodize_ltcbtc_block_data
 from parachain_ltcbtc import get_block_number as get_ltcbtc_block_number
 from parachain_ripple import apodize_block_data as apodize_ripple_block_data
 from parachain_ripple import get_block_number as get_ripple_block_number
-from utilities import json_ipc
+from utilities import json_ipc, chronicle
 
 
 def get_block_number(network):
@@ -90,6 +90,7 @@ def window_parachain(comptroller):
     new_parachain = apodize(comptroller, new_blocks)
     json_ipc(f"parachain_{network}.txt", json_dumps(new_parachain))
     params = parachain_params()
+    chronicle(comptroller, "initilizing parachain")
     while True:
         # limit parachain write frequency
         time.sleep(params[network]["pause"])

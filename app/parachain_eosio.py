@@ -163,7 +163,6 @@ def apodize_block_data(comptroller, new_blocks):
         and value dict() containing normalized transactions with keys:
         ["to", "from", "memo", "hash", "asset", "amount"]
     """
-    chronicle(comptroller, "initilizing parachain")
     parachain = {}
     # using multiprocessing, get any new unchecked blocks
     blocks = eos_block_cache(new_blocks)

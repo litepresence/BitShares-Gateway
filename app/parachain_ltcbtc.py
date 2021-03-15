@@ -126,7 +126,6 @@ def apodize_block_data(comptroller, new_blocks):
         and value dict() containing normalized transactions with keys:
         ["to", "from", "memo", "hash", "asset", "amount"]
     """
-    chronicle(comptroller, "initilizing parachain")
     network = comptroller["network"]
     parachain = {}
     # check every block from last check till now
