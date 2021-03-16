@@ -1,0 +1,8 @@
+# Packages to be installed via apt-get
+
+# Supports PyPI eosiopy
+libssl-dev
+
+# Supports PyPI secp256k1
+libffi-dev
+libsecp256k1-dev
