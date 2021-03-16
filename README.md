@@ -37,8 +37,6 @@ Currently gateway tokenization of the following coins are supported:
 
 # This project has been sponsored by www.bitshares.org 
 
-and peer reviewed by BitShares core developer Dr. Christopher Sanborn
-
 
     NON STANDARD MODULES WHICH REQUIRE INSTALLATION
 
@@ -51,7 +49,7 @@ and peer reviewed by BitShares core developer Dr. Christopher Sanborn
 - ecdsa
 - aioxrpy
 
-Be advised, although this gateway has been live tested on chain and peer reviewed, 
+Be advised, although this gateway has been live tested on chain and is being peer reviewed, 
 it should be considered beta software and has not yet been deployed live to the public.
 
 License: www.wtfpl.net 
