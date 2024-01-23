@@ -24,49 +24,48 @@ ensure all inbound funds are transfered to the zero index outbound account
 # DISABLE SELECT PYLINT TESTS
 # pylint: disable=too-many-nested-blocks
 
-# STANDARD PYTHON MODULES
+# STANDARD MODULES
 import time
+from typing import Any, Dict
 
-# BITSHARES GATEWAY MODULES
+# GATEWAY MODULES
 from config import foreign_accounts, max_unspent, nil, offerings, timing
+from ipc_utilities import chronicle
 from parachain_ltcbtc import get_block_number as get_ltcbtc_block_number
 from parachain_ripple import get_block_number as get_xrp_block_number
 from signing_eosio import eos_balance
 from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
 from signing_ripple import xrp_balance, xrp_transfer
-from utilities import chronicle, it, line_number, timestamp
+from utilities import it, line_number, timestamp
 
 
-def ingot_casting(comptroller):
+def ingot_casting(comptroller: Dict[str, Any]) -> None:
     """
-    in a background process, check incoming accounts & move funds to outbound accounts
+    In a background process, check incoming accounts & move funds to outbound accounts.
+
+    :param comptroller: The comptroller dictionary.
     """
-    print(it("red", f"INITIALIZING INGOT CASTING\n"))
-    # print(comptroller["offerings"], "\n")
+    print(it("red", "INITIALIZING INGOT CASTING\n"))
+
     while 1:
         for network in offerings():
             comptroller["network"] = network
             order = {}
-            # ==========================================================================
-            # gateways with a single incoming account
-            # ==========================================================================
-            if network in [
-                "eos",
-            ]:
+
+            # Gateways with a single incoming account
+            if network in ["eos", "xyz"]:
                 pass  # NOTE: no ingot casting
-            # ==========================================================================
-            # gateways with traditional account balance accounting
-            # ==========================================================================
+
+            # Gateways with traditional account balance accounting
             # recycle gateway incoming transfers to the outbound account
             # allow this loop to be used by multiple coins
-            elif network in [
-                "xrp",
-            ]:
+            elif network in ["xrp"]:
                 # XRP specific parameters
                 if network == "xrp":
                     get_balance = xrp_balance
                     transfer = xrp_transfer
                     block = get_xrp_block_number({"ingot_process": None})
+
                 for idx, gateway in enumerate(foreign_accounts()[network]):
                     if bool(idx):  # exclude the zero index
                         balance = get_balance(gateway["public"], comptroller)
@@ -75,17 +74,20 @@ def ingot_casting(comptroller):
                             line_number()
                             print(it("red", f"{network.upper()} RECYCLER"))
                             print(gateway["public"], balance, "\n")
-                            # finalize the order
+
+                            # Finalize the order
                             order["private"] = gateway["private"]
                             order["public"] = gateway["public"]
-                            # always send back to the zero index address
+                            # Always send back to the zero index address
                             order["to"] = foreign_accounts()[network][0]["public"]
                             order["quantity"] = balance
-                            if network == "xrp":  # must maintain min balance for xrp
+
+                            if network == "xrp":  # Must maintain min balance for xrp
                                 order["quantity"] -= 20.1
-                            # final quantity check
+
+                            # Final quantity check
                             if order["quantity"] > nil()[network]:
-                                # serialize, sign, and broadcast
+                                # Serialize, sign, and broadcast
                                 ingot = transfer(order, comptroller)
                                 msg = (
                                     "consolidating an ingot on",
@@ -96,16 +98,14 @@ def ingot_casting(comptroller):
                                 chronicle(comptroller, msg)
                                 print(msg)
 
-            # ==========================================================================
-            # gateways with unspent transaction output (UTXO) accounting
-            # ==========================================================================
+            # Gateways with unspent transaction output (UTXO) accounting
             # FIXME can we better game the utxo fee schedule?
             elif network in ["btc", "ltc"]:
                 comptroller["network"] = network
                 if len(ltcbtc_balances(None, comptroller)) > max_unspent()[network]:
-                    # get the block number
+                    # Get the block number
                     block_num = get_ltcbtc_block_number(comptroller)
-                    # consolidate balances into a single ingot
+                    # Consolidate balances into a single ingot
                     order = {
                         "to": foreign_accounts()[network][0]["public"],
                         "quantity": ltcbtc_balance(None, comptroller),
@@ -118,21 +118,23 @@ def ingot_casting(comptroller):
         time.sleep(timing()["ingot"])
 
 
-def gateway_balances(network=None):
+def gateway_balances(network=None) -> None:
     """
-    print gateway balances
+    Print gateway balances.
+
+    :param network: The network to print balances for, defaults to None.
     """
     comptroller = {}
     if network in ["xrp", None]:
         for gateway in foreign_accounts()["xrp"]:
             print(
-                f"Gateway XRP balance for",
+                "Gateway XRP balance for",
                 gateway["public"].rjust(40),
                 xrp_balance(gateway["public"], comptroller),
             )
     if network in ["eos", None]:
         print(
-            f"Gateway EOS balance for",
+            "Gateway EOS balance for",
             foreign_accounts()["eos"][0]["public"].rjust(40),
             eos_balance(foreign_accounts()["eos"][0]["public"], comptroller),
         )
@@ -150,9 +152,9 @@ def gateway_balances(network=None):
         print("Unspent Balances\n", balances)
 
 
-def unit_test_ingots():
+def unit_test_ingots() -> None:
     """
-    quick test of the definitions above
+    Quick test of the definitions above.
     """
     gateway_balances()
     input("press Enter to continue")
@@ -164,5 +166,4 @@ def unit_test_ingots():
 
 
 if __name__ == "__main__":
-
     unit_test_ingots()

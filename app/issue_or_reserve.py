@@ -20,90 +20,98 @@ WTFPL litepresence.com Jan 2021
 
 issue or reserve called by the chain specific listeners
 """
+# STANDARD MODULES
+from typing import Any, Dict, Optional
 
 # BITSHARES GATEWAY MODULES
-from config import nil
-from signing_bitshares import issue, reserve
-from utilities import chronicle, it, roughly
+from config import gateway_assets, nil
+from ipc_utilities import chronicle
+from signing.bitshares.graphene_auth import issue, reserve
+from utilities import it, roughly
 
 
-def issue_or_reserve(comptroller):
+def issue_or_reserve(comptroller: Dict[str, Any]) -> Dict[str, Any]:
     """
-    issue or reserve uia upon hearing a transaction in the listener boilerplate
-    unpacks a considerable number of kwargs from comptroller
+    Issue or reserve UIA upon hearing a transaction in the listener boilerplate.
+    Unpacks a considerable number of kwargs from comptroller.
 
-    :param dict(comptroller) # audit dictionary
-    :return dict(comtroller) # updated audit dictionary
+    :param comptroller: Audit dictionary.
+    :return: Updated audit dictionary.
     """
-    # localize the comptroller keys
-    uia = comptroller["uia"]
-    nonce = comptroller["nonce"]
-    uia_id = comptroller["uia_id"]
-    trx_to = comptroller["trx_to"]
-    network = comptroller["network"]
-    trx_from = comptroller["trx_from"]
-    direction = comptroller["direction"]
-    client_id = comptroller["client_id"]
-    trx_amount = comptroller["trx_amount"]
-    str_amount = comptroller["str_amount"]
-    memo_check = comptroller["memo_check"]
-    listening_to = comptroller["listening_to"]
-    issuer_action = comptroller["issuer_action"]
-    withdrawal_amount = comptroller["withdrawal_amount"]
+    # Localize the comptroller keys
+    uia: str = comptroller["uia"]
+    nonce: int = comptroller["nonce"]
+    uia_id: str = comptroller["uia_id"]
+    trx_to: str = comptroller["trx_to"]
+    network: str = comptroller["network"]
+    trx_from: str = comptroller["trx_from"]
+    direction: str = comptroller["direction"]
+    client_id: str = comptroller["client_id"]
+    trx_amount: float = comptroller["trx_amount"]
+    str_amount: str = comptroller["str_amount"]
+    memo_check: bool = comptroller["memo_check"]
+    listening_to: str = comptroller["listening_to"]
+    issuer_action: Optional[str] = comptroller["issuer_action"]
+    withdrawal_amount: Optional[float] = comptroller["withdrawal_amount"]
 
-    # print(listening_to, trx_to)
-    # if the transaction is to the address we're listening to
+    # If the transaction is to the address we're listening to
     if listening_to == trx_to:
-        # if its a gateway usilizing a single account and the memo is invalid
+        # If it's a gateway utilizing a single account and the memo is invalid
         if issuer_action == "issue" and not memo_check:
-            msg = "received tx with invalid memo"
+            msg: str = "Received transaction with invalid memo"
             chronicle(comptroller, msg)
             print(msg)
-        # chronicle nil deposits, but do not issue or reserve
+
+        # Chronicle nil deposits but do not issue or reserve
         if 0 < trx_amount <= nil()[network]:
-            msg = "received nil amount"
+            msg: str = "Received nil amount"
             chronicle(comptroller, msg)
             print(msg)
             if issuer_action is None:
                 print(comptroller)
-        # process deposits greater than nil
+
+        # Process deposits greater than nil
         if trx_amount > nil()[network]:
             print(
-                f"nonce {nonce}",
-                it("red", f"{direction} {network}"),
+                f"Nonce {nonce}",
+                it("red", f"{direction} {network.upper()}"),
                 it("red", "TRANSFER DETECTED\n"),
-                f"amount {trx_amount} {str_amount} \n",
-                f"from {trx_from}\n",
-                f"to {trx_to}\n",
+                f"Amount {trx_amount} {str_amount}\n From {trx_from}\n To {trx_to}\n",
             )
-            # client has deposited foreign tokens, issue an equal amount of UIA
+
+            # Client has deposited foreign tokens, issue an equal amount of UIA
             if issuer_action == "issue" and memo_check:
-                msg = (
-                    f"nonce {nonce}",
-                    it("red", f"ISSUING {trx_amount}"),
-                    (client_id, uia, uia_id, network),
+                msg: str = (
+                    f'Nonce {nonce} {it("red", f"ISSUING {trx_amount}")} {client_id}, {uia},'
+                    f" {uia_id}, {network}"
                 )
-                issue(network, trx_amount, client_id)
-                # signal to break the while loop
-                comptroller["complete"] = True
-                chronicle(comptroller, msg)
                 print(msg)
-            # parent process is sending funds to client
+                issue(gateway_assets()[network], trx_amount, client_id)
+                # Signal to break the while loop
+                comptroller["complete"] = True
+                chronicle(comptroller, str(msg))
+
+            # Parent process is sending funds to the client,
             # reserve the UIA upon hearing proof of transfer
             elif issuer_action == "reserve" and roughly(trx_amount, withdrawal_amount):
-                msg = (
-                    f"nonce {nonce}",
-                    it("red", f"RESERVING {trx_amount}"),
-                    (client_id, uia, uia_id, network),
+                msg: str = (
+                    f'Nonce {nonce} {it("red", f"RESERVING {trx_amount}")} {client_id}, {uia},'
+                    f" {uia_id}, {network}"
                 )
-                reserve(network, trx_amount)
-                # signal to break the while loop
-                comptroller["complete"] = True
-                chronicle(comptroller, msg)
                 print(msg)
-            # when unit testing print the comptroller
+                reserve(gateway_assets()[network], trx_amount)
+                # Signal to break the while loop
+                comptroller["complete"] = True
+                chronicle(comptroller, str(msg))
+
+            # When unit testing, print the comptroller
             elif issuer_action is None:
-                msg = "unit test transfer"
+                msg: str = "Unit test transfer"
                 chronicle(comptroller, msg)
                 print(msg, "\n", comptroller)
+        else:
+            msg = "trx_amount less than nil"
+            print(it("yellow", msg))
+            chronicle(comptroller, msg)
+
     return comptroller

@@ -28,57 +28,41 @@ called by process_withdrawals.py and process_deposits.py
 
 # DISABLE SELECT PYLINT TESTS
 # pylint: disable=too-many-locals
+# Importing necessary modules
 
-# STANDARD PYTHON MODULES
+# STANDARD MODULES
 import time
 from pprint import pprint
+from typing import Any, Dict
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import unlock_address
-from config import foreign_accounts, gateway_assets, timing, parachain_params
+from config import foreign_accounts, gateway_assets, parachain_params, timing
+from ipc_utilities import chronicle, json_ipc
 from issue_or_reserve import issue_or_reserve
-from parachain_eosio import get_block_number as get_eosio_block_number
 from parachain_eosio import verify_eosio_account
-from parachain_ltcbtc import get_block_number as get_ltcbtc_block_number
 from parachain_ltcbtc import verify_ltcbtc_account
-from parachain_ripple import get_block_number as get_ripple_block_number
 from parachain_ripple import verify_ripple_account
-from utilities import chronicle, encode_memo, it, json_ipc, precisely, xterm
+from parachain_xyz import verify_xyz_account
+from utilities import it, precisely, xterm
 
 
-def get_block_number(comptroller):
-    """
-    return the current block height as an integer for the appropriate network
-    """
-    network = comptroller["network"]
-    dispatch = {
-        "ltc": get_ltcbtc_block_number,
-        "btc": get_ltcbtc_block_number,
-        "eos": get_eosio_block_number,
-        "xrp": get_ripple_block_number,
-    }
-    return dispatch[network](network)
-
-
-def verifier_specific(comptroller):
-    """
-    return the verifier for this network
-    """
-    network = comptroller["network"]
+def verifier_specific(network: str) -> Any:
+    """Return the verifier for this network."""
     dispatch = {
         "ltc": verify_ltcbtc_account,
         "btc": verify_ltcbtc_account,
         "xrp": verify_ripple_account,
         "eos": verify_eosio_account,
+        "xyz": verify_xyz_account,
     }
     return dispatch[network]
 
 
-def listener_boilerplate(comptroller):
+def listener_boilerplate(comptroller: Dict[str, Any]) -> None:
     """
-    for every block from initialized until detected
-        check for transaction to the gateway
-            issue or reserve uia upon receipt of gateway transfer
+    For every block from initialized until detected:
+    Check for a transaction to the gateway, issue or reserve UIA upon receipt of gateway transfer.
 
     :dict(comproller) contains full audit trail and these pertinent keys:
       :key int(account_idx) # from gateway_state.py
@@ -94,48 +78,47 @@ def listener_boilerplate(comptroller):
     """
     color = xterm()
     start = time.time()
-    # localize the comptroller values
+    # Localizing the comptroller values
     memo = comptroller["memo"]
     nonce = comptroller["nonce"]
     network = comptroller["network"]
-    client_id = comptroller["client_id"]
     account_idx = comptroller["account_idx"]
     issuer_action = comptroller["issuer_action"]
-    # localize configuration for this network
+    # Localizing configuration for this network
     uia = gateway_assets()[network]["asset_name"]
     uia_id = gateway_assets()[network]["asset_id"]
     gateway_address = foreign_accounts()[network][account_idx]["public"]
-    # apply appropriate logic for issue, reserve, and unit testing
+    # Apply appropriate logic for issue, reserve, and unit testing
     # to tx direction, client_address, withdrawal_amount, and listening_to
     if issuer_action == "issue":
-        # issuing uia to cover deposit of foreign tokens
-        # monitor the gateway address
-        # awaiting unknown amount of incoming funds
+        # Issuing uia to cover deposit of foreign tokens
+        # Monitor the gateway address
+        # Awaiting unknown amount of incoming funds
         direction = "incoming deposit"
         client_address = None  # not applicable to deposits
         withdrawal_amount = None  # not applicable to deposits
         listening_to = gateway_address
     elif issuer_action == "reserve":
-        # reserving uia to cover withdrawal of foreign tokens
-        # monitor the client address
-        # awaiting the specific amount that was withdrawn
+        # Reserving uia to cover withdrawal of foreign tokens
+        # Monitor the client address
+        # Awaiting the specific amount that was withdrawn
         direction = "outgoing withdrawal"
         client_address = comptroller["client_address"]
         withdrawal_amount = comptroller["withdrawal_amount"]
         listening_to = client_address
     else:
-        # for unit testing issuer action is None
-        # monitor the zero idx foreign account for an unknown amount
+        # For unit testing issuer action is None
+        # Monitor the zero idx foreign account for an unknown amount
         direction = None
         client_address = None
         withdrawal_amount = None
         listening_to = foreign_accounts()[network][0]["public"]
-    # initialize the block counter
+    # Initialize the block counter
     parachain = json_ipc(f"parachain_{network}.txt")
     parachain_keys = [int(x) for x in list(parachain.keys())]
     start_block_num = max(parachain_keys)
     checked_blocks = [start_block_num]
-    # update the audit trail
+    # Update the audit trail
     comptroller["uia"] = uia
     comptroller["uia_id"] = uia_id
     comptroller["complete"] = False  # signal to break the while loop
@@ -146,14 +129,14 @@ def listener_boilerplate(comptroller):
     comptroller["start_block_num"] = start_block_num
     comptroller["withdrawal_amount"] = withdrawal_amount
     print("Start Block:", start_block_num, "NONCE", nonce, "LISTENING TO", listening_to)
-    # iterate through irreversible block data
+    # Iterate through irreversible block data
     while 1:
-        # limit parachain read frequency
+        # Limit parachain read frequency
         time.sleep(parachain_params()[network]["pause"])
         # if issue/reserve has signaled to break the while loop
         if comptroller["complete"]:
             break
-        # after timeout, break the while loop; if deposit: release the address
+        # After timeout, break the while loop; if deposit, release the address
         elapsed = time.time() - start
         if elapsed > timing()[network]["timeout"]:
             print(it("red", f"NONCE {memo} {network.upper()} GATEWAY TIMEOUT"))
@@ -163,13 +146,13 @@ def listener_boilerplate(comptroller):
             msg = "listener timeout"
             chronicle(comptroller, msg)
             break
-        # otherwise, get the latest block number from the parachain
+        # Otherwise, get the latest block number from the parachain
         parachain = json_ipc(f"parachain_{network}.txt")
         parachain_keys = [int(x) for x in list(parachain.keys())]
         current_block_num = max(parachain_keys)
-        # get the maximum block number we have checked
+        # Get the maximum block number we have checked
         max_checked_block = max(checked_blocks)
-        # if there are any new blocks
+        # If there are any new blocks
         if current_block_num > max_checked_block + 1:
             # announce every block from last checked till now
             new_blocks = [*range(max_checked_block + 1, current_block_num)]
@@ -190,29 +173,29 @@ def listener_boilerplate(comptroller):
                 it("yellow", account_idx),
                 it(color, str_also),
             )
-            # with new cache of blocks, check every block from last check till now
+            # With a new cache of blocks, check every block from last check till now
             for block_num in new_blocks:
                 if block_num not in checked_blocks:
                     checked_blocks.append(block_num)
                 try:
                     transfers = parachain[str(block_num)]
-                except:
+                except Exception:
                     transfers = []
                     msg = f"missing block data for {block_num}"
                     # FIXME fallback mechanism?
                     chronicle(comptroller, msg)
                 for transfer in transfers:
-                    # extract the transaction data
+                    # Extract the transaction data
                     trx_to = transfer["to"]
                     trx_hash = transfer["hash"]
                     trx_memo = transfer["memo"]
                     trx_from = transfer["from"]
                     trx_amount = transfer["amount"]
-                    # test the memo on pertinent network deposits
+                    # Test the memo on pertinent network deposits
                     memo_check = True
                     if issuer_action == "issue" and network in ["eos", "xrp"]:
                         memo_check = bool(memo == trx_memo)
-                    # update the audit trail
+                    # Update the audit trail
                     comptroller["trx_to"] = trx_to
                     comptroller["elapsed"] = elapsed
                     comptroller["trx_hash"] = trx_hash
@@ -223,11 +206,11 @@ def listener_boilerplate(comptroller):
                     comptroller["trx_amount"] = trx_amount
                     comptroller["memo_check"] = memo_check
                     comptroller["current_block"] = current_block_num
-                    # issue or reserve and return the modified audit trail
+                    # Issue or reserve and return the modified audit trail
                     comptroller = issue_or_reserve(comptroller)
 
 
-def main():
+def main() -> None:
     """
     UNIT TEST listener demonstration
     """
@@ -242,9 +225,9 @@ def main():
     print(time.ctime(), "\n")
     for key, val in dispatch.items():
         print("   ", key, ":", val)
-    choice = int(input("\nwhich listener would you like to demo?\n"))
+    choice = int(input("\nWhich listener would you like to demo?\n"))
     network = dispatch[choice]
-    # build a test comptroller dictionary
+    # Build a test comptroller dictionary
     comptroller = {
         "issuer_action": None,
         "account_idx": 0,
@@ -258,21 +241,25 @@ def main():
     print("\nnetwork", network.upper(), "\n\n", "comptroller\n===============")
     pprint(comptroller)
     print(f"\n{network.upper()} Account Verification\n============================")
-    verifier = verifier_specific(comptroller)
-    # verify a True address
+    verifier = verifier_specific(network)
+    # Verify a True address
     account = foreign_accounts()[network][0]["public"]
     print(
-        f"verify_{network}_account(", account, ")", verifier(account, comptroller),
+        f"verify_{network}_account(",
+        account,
+        ")",
+        verifier(account, comptroller),
     )
-    # verify a False address
+    # Verify a False address
     print(
-        f"verify_{network}_account(", "test fail )", verifier("test fail", comptroller),
+        f"verify_{network}_account(",
+        "test fail )",
+        verifier("test fail", comptroller),
     )
     print(f"\n{network.upper()} Transaction Listener\n============================")
-    # unit test the listener
+    # Unit test the listener
     listener_boilerplate(comptroller)
 
 
 if __name__ == "__main__":
-
     main()

@@ -1,0 +1,11 @@
+bitcoinrpc/__init__.py,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+bitcoinrpc/__pycache__/__init__.cpython-39.pyc,,
+bitcoinrpc/__pycache__/authproxy.cpython-39.pyc,,
+bitcoinrpc/authproxy.py,sha256=xeKp7nMt5M1wSDKdp7w6VbBgTsAPMKXKqdy9AHK3UyQ,7353
+python_bitcoinrpc-1.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+python_bitcoinrpc-1.0.dist-info/LICENSE,sha256=nN4SnxkIQ-FAZHYRFDtMlduZtVt1xplMfxq8FI57EGc,25928
+python_bitcoinrpc-1.0.dist-info/METADATA,sha256=_3nXvDOBa6H2nQK_LcqbYjDX6P9W2hH3DqjLw53Y070,2762
+python_bitcoinrpc-1.0.dist-info/RECORD,,
+python_bitcoinrpc-1.0.dist-info/REQUESTED,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+python_bitcoinrpc-1.0.dist-info/WHEEL,sha256=ewwEueio1C2XeHTvT17n8dZUJgOvyCWCt0WVNLClP9o,92
+python_bitcoinrpc-1.0.dist-info/top_level.txt,sha256=dCgYvdnmLtCliTKjdEXS2dFSGR3Ew6fyKqceNoCQq9M,11

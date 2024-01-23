@@ -29,7 +29,7 @@ from webbrowser import open as browse
 from config import foreign_accounts, test_accounts
 
 # GLOBAL CONSTANTS
-BITSHARES_EXPLORER = "http://www.cryptofresh.com/u/"
+BITSHARES_EXPLORER = "https://blocksights.info/#/accounts/"
 RIPPLE_EXPLORER = "http://www.bithomp.com/explorer/"
 EOSIO_EXPLORER = "http://www.eosflare.io/account/"
 
@@ -59,5 +59,4 @@ def block_explorers():
 
 
 if __name__ == "__main__":
-
     block_explorers()

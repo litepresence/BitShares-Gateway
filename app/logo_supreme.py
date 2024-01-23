@@ -129,7 +129,7 @@ def bell(duration, freq):
     """
     play the linux bell tone using:  'sudo apt install sox'
     """
-    if freq == 0 or not AUDIO:
+    if not freq or not AUDIO:
         time.sleep(duration / SPEED)
     else:
         os.system(f"play -n -q -t  alsa synth {duration/SPEED} saw {freq} gain -35")
@@ -169,9 +169,11 @@ def reserve_mat():
     reverse the issue path to become a reserve path
     """
     return [
-        [ISSUE[::-1][i][0] + 1, ISSUE[::-1][i][1]]
-        if i in range(9, 13)
-        else [ISSUE[::-1][i][0], ISSUE[::-1][i][1]]
+        (
+            [ISSUE[::-1][i][0] + 1, ISSUE[::-1][i][1]]
+            if i in range(9, 13)
+            else [ISSUE[::-1][i][0], ISSUE[::-1][i][1]]
+        )
         for i in range(22)
     ]
 
@@ -222,7 +224,6 @@ def animate(note=0, coin_num=0, issuing=True):
             *COINS[coin_num],
         ]
     for position in steps:
-
         print(
             f"\033[{position[0]+2};{position[1]+1}H"
             + it(COLOR[0], LOGO_MAT[position[0]][position[1]], True)
@@ -264,7 +265,11 @@ def main():
         time.sleep(5)
 
 
-if __name__ == "__main__":
+def run():
+    """
+    main runner
+    """
+    global LOGO_MAT, RESERVE, COINS, UIA
     LOGO_MAT = logo_mat()
     RESERVE = reserve_mat()
     COINS = coin_mat()

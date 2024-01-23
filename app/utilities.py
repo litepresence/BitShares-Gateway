@@ -26,9 +26,7 @@ a collection of shared utilities for Graphene Python Gateway
 
 # STANDARD PYTHON MODULES
 import base64
-import datetime
 import inspect
-import os
 import time
 import traceback
 from calendar import timegm
@@ -37,12 +35,12 @@ from json import dumps as json_dumps
 from json import loads as json_loads
 from random import choice, random, shuffle
 
-# THIRD PARTY MODULES
-from bitcoinrpc.authproxy import AuthServiceProxy
 from websocket import create_connection as wss
 
 # BITSHARES GATEWAY MODULES
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
+# THIRD PARTY MODULES
+from signing.bitcoin.bitcoinrpc.authproxy import AuthServiceProxy
 
 
 def encode_memo(network, seed):
@@ -57,9 +55,7 @@ def encode_memo(network, seed):
         memo = int(("1" + memo)[:10]) if memo[0] == "0" else int(memo)
     else:
         # 10 digit base 32 ~1,000,000,000,000,000 unique values
-        memo = (
-            base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
-        )
+        memo = base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
     return memo
 
 
@@ -93,7 +89,7 @@ def create_access(network):
         access = AuthServiceProxy(node[0])
         try:
             access.loadwallet(node[1])
-        except:
+        except Exception:
             pass
     elif network == "ltc":
         access = AuthServiceProxy(node[0] + "/wallet/" + node[1])
@@ -102,141 +98,10 @@ def create_access(network):
 
 
 def event_id(prefix, number):
-
+    """
+    create and event id of fixed length
+    """
     return prefix + ("0000000000" + str(number))[-10:]
-
-
-def chronicle(comptroller, msg=None):
-    """
-    log this comptroller event for auditing purposes, sample document name:
-
-    BTC_2021_01_archive.txt
-    """
-    comptroller["msg"] = msg
-    comptroller["unix"] = int(time.time())
-    comptroller["date"] = time.ctime()
-    doc = (
-        comptroller["network"].upper()
-        + "_"
-        + datetime.datetime.now().strftime("%Y_%m")
-        + "_archive.txt"
-    )
-    try:
-        json_ipc(doc, json_dumps(comptroller), append=True)
-    except:
-        for k, v in comptroller.items():
-            print(k, v, type(v))
-        raise
-
-
-def json_ipc(doc="", text="", initialize=False, append=False):
-    """
-    JSON IPC
-
-    Concurrent Interprocess Communication via Read and Write JSON
-
-    features to mitigate race condition:
-
-        open file using with statement
-        explicit close() in with statement
-        finally close()
-        json formatting required
-        postscript clipping prevents misread due to overwrite without erase
-        read and write to the text pipe with a single definition
-        growing delay between attempts prevents cpu leak
-
-    to view your live streaming database, navigate to the pipe folder in the terminal:
-
-        tail -F your_json_ipc_database.txt
-
-    :dependencies: os, traceback, json.loads, json.dumps
-    :warn: incessant read/write concurrency may damage older spinning platter drives
-    :warn: keeping a 3rd party file browser pointed to the pipe folder may consume RAM
-    :param str(doc): name of file to read or write
-    :param str(text): json dumped list or dict to write; if empty string: then read
-    :return: python list or dictionary if reading, else None
-
-    wtfpl2020 litepresence.com
-    """
-    # initialize variables
-    data = None
-    # file operation type for exception message
-    if text:
-        if append:
-            act = "appending"
-        else:
-            act = "writing"
-    else:
-        act = "reading"
-    # create a clipping tag for read and write operations
-    tag = ""
-    if not act == "appending":
-        tag = "<<< JSON IPC >>>"
-    # determine where we are in the file system; change directory to pipe folder
-    path = os.path.dirname(os.path.abspath(__file__)) + "/pipe"
-    # ensure we're writing json then add prescript and postscript for clipping
-    try:
-        text = tag + json_dumps(json_loads(text)) + tag if text else text
-    except:
-        print(text)
-        raise
-    # move append operations to the comptroller folder and add new line
-    if append:
-        path += "/comptroller"
-        text = "\n" + text
-    # create the pipe subfolder
-    if initialize:
-        os.makedirs(path, exist_ok=True)
-        os.makedirs(path + "/comptroller", exist_ok=True)
-    if doc:
-        doc = path + "/" + doc
-        # race read/write until satisfied
-        iteration = 0
-        while True:
-            # increment the delay between attempts exponentially
-            time.sleep(0.02 * iteration ** 2)
-            try:
-                if act == "appending":
-                    with open(doc, "a") as handle:
-                        handle.write(text)
-                        handle.close()
-                        break
-                elif act == "writing":
-                    with open(doc, "w+") as handle:
-                        handle.write(text)
-                        handle.close()
-                        break
-                elif act == "reading":
-                    with open(doc, "r") as handle:
-                        # only accept legitimate json
-                        data = json_loads(handle.read().split(tag)[1])
-                        handle.close()
-                        break
-            except Exception:
-                if iteration == 1:
-                    if "initializing gateway main" in text:
-                        print("no json_ipc pipe found, initializing...")
-                    else:
-                        print(  # only if it happens more than once
-                            iteration,
-                            f"json_ipc failed while {act} to {doc} retrying...\n",
-                        )
-                elif iteration == 5:
-                    # maybe there is no pipe? auto initialize the pipe!
-                    json_ipc(initialize=True)
-                    print("json_ipc pipe initialized, retrying...\n")
-                elif iteration == 10:
-                    print("json_ipc unexplained failure\n", traceback.format_exc())
-                iteration += 1
-                continue
-            # deliberately double check that the file is closed
-            finally:
-                try:
-                    handle.close()
-                except Exception:
-                    pass
-
-    return data
 
 
 def line_number():
@@ -253,22 +118,21 @@ def timestamp():
     """
     print local time, timezone, and unix timestamp
     """
-    now = (
-        str(time.ctime())
-        + " "
-        + str(time.tzname[0])
-        + " epoch "
-        + str(int(time.time()))
-    )
+    now = str(time.ctime()) + " " + str(time.tzname[0]) + " epoch " + str(int(time.time()))
     print(now)
     return now
 
 
 def from_iso_date(date):
     """
-    BitShares ISO8601 to UNIX time conversion
+    BitShares ISO8601 or time.ctime to UNIX time conversion
     """
-    return int(timegm(time.strptime(str(date), "%Y-%m-%dT%H:%M:%S")))
+    ret = 0
+    try:
+        ret = int(timegm(time.strptime(str(date), "%Y-%m-%dT%H:%M:%S")))
+    except ValueError:
+        ret = int(timegm(time.strptime(str(date), "%a %b %d %H:%M:%S %Y")))
+    return ret
 
 
 def logo():
@@ -300,7 +164,7 @@ def precisely(number, precision):
     :param int(precision): truncated decimal places to return; no more no less
     :return str(): string representation of a decimal to specific number of places
     """
-    num = "%.99f" % float(number)
+    num = f"{float(number):.99f}"
     for _ in range(precision):
         num += "0"
     return num[: num.find(".") + precision + 1]
@@ -342,12 +206,17 @@ def it(style, text, foreground=True):
     Color printing in terminal
     """
     emphasis = {
-        "red": 91,
-        "green": 92,
-        "yellow": 93,
-        "blue": 94,
-        "purple": 95,
-        "cyan": 96,
+        "red": 197,
+        "green": 154,
+        "yellow": 227,
+        "orange": 208,
+        "purple": 141,  # 177,
+        "blue": 51,
+        "white": 231,
+        "gray": 250,
+        "grey": 250,
+        "black": 236,
+        "cyan": 51,
     }
     lie = 4
     if foreground:
@@ -357,8 +226,18 @@ def it(style, text, foreground=True):
     elif isinstance(style, int):  # xterm-256
         ret = f"\033[{lie}8;5;{style}m{str(text)}\033[0;00m"
     else:  # 6 color emphasis dict
-        ret = f"\033[{emphasis[style]}m{str(text)}\033[0m"
+        ret = f"\033[{lie}8;5;{emphasis[style]}m{str(text)}\033[0m"
     return ret
+
+
+def at(pos, text):
+    """
+    Use ANSI escape code to print text at position
+    """
+    new_text = "\033[s"
+    for idx, line in enumerate(text.split("\n")):
+        new_text += f"\033[{pos[1]+idx};{pos[0]}H{line}"
+    return new_text + "\033[u"
 
 
 def raw_operations():
@@ -464,6 +343,7 @@ def wss_query(rpc, params):
         except Exception:
             pass
         print(traceback.format_exc())
+        return None
 
 
 def block_ops_logo():

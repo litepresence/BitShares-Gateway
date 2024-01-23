@@ -28,7 +28,7 @@ RESERVE asset
 # BITSHARES GATEWAY MODULES
 from config import gateway_assets, test_accounts
 from nodes import bitshares_nodes
-from signing_bitshares import broker
+from signing.bitshares.graphene_auth import broker
 
 # GLOBALS
 AMOUNT = 1  # must be integer during testing due to precision of testnet uia
@@ -138,5 +138,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()

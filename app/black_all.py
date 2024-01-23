@@ -44,21 +44,18 @@ DISABLE = (
     "invalid-name",
     # sometimes it just can't find the modules referenced - on this machine
     "import-error",
-    # whitespace authoritarianism
-    "bad-continuation",
-    "bad-whitespace",
     # class minimums
     "too-few-public-methods",
-    "no-self-use",
     # suppression
     "suppressed-message",
     "locally-disabled",
     "useless-suppression",
+    "useless-option-value",
 )
 
 
 def main():
-    """
+    r"""
     \033c\nWelcome to lite Black Pylint Lite All! \n
     """
     print(main.__doc__)
@@ -87,7 +84,7 @@ def main():
     # Clear the screen
     print("\033c")
     # Get all of the python files in the current folder
-    pythons = [f for f in os.listdir() if f.endswith(".py")]
+    pythons = [f for f in os.listdir() + os.listdir("signing") if f.endswith(".py")]
     # pythons = [f for f in os.listdir() if f in ONLY]
     # For every file in that list:
     if choice in [1, 2, 5]:
@@ -114,7 +111,7 @@ def main():
     # Find the time it took to black the scripts.
     took = end - start
     # Print that time.
-    print(len(pythons), "scripts took %.1f" % took, "seconds.")
+    print(len(pythons), f"scripts took {took:1f} seconds.")
 
 
 if __name__ == "__main__":

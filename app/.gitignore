@@ -1,0 +1,6 @@
+versions/
+database/
+pipe/
+__pycache__/
+TODO
+make_version.py

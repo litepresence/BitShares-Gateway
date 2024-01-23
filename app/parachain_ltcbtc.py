@@ -29,24 +29,25 @@ Litecoin and Bitcoin parachain builder
 
 # STANDARD PYTHON MODULES
 import time
+from typing import Dict, List, Union
 
 # BITSHARES GATEWAY MODULES
-from utilities import chronicle, create_access, precisely
+from utilities import create_access, precisely
 
 
-def verify_ltcbtc_account(account, comptroller):
+def verify_ltcbtc_account(account: str, comptroller: Dict) -> bool:
     """
-    check to see if the address is valid
+    Check to see if the Litecoin or Bitcoin address is valid.
 
-    :param str(account): bitcoin address
-    :param dict(comptroller): used to distinguish ltc vs btc network
-    :return bool(): is this a valid address?
+    :param str(account): Litecoin or Bitcoin address
+    :param dict(comptroller): Used to distinguish LTC vs BTC network
+    :return bool: True if the address is valid, False otherwise
     """
     network = comptroller["network"]
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(network)
             return bool(access.validateaddress(account)["isvalid"])
@@ -55,16 +56,17 @@ def verify_ltcbtc_account(account, comptroller):
         iteration += 1
 
 
-def get_block_number(network):
+def get_block_number(network: Dict) -> int:
     """
-    the current block height as an integer
-    :param dict(comptroller): used to distinguish ltc vs btc network
-    :return int(): current block number
+    Get the current Litecoin or Bitcoin block number.
+
+    :param dict(comptroller): Used to distinguish LTC vs BTC network
+    :return int: Current block number
     """
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(network)
             return int(access.getblockcount())
@@ -73,43 +75,36 @@ def get_block_number(network):
         iteration += 1
 
 
-def get_block(network, block_num):
+def get_block(network: Dict, block_num: int) -> List[Dict]:
     """
-    extract litecoin or bitcoin block transactions given a block number
+    Extract Litecoin or Bitcoin block transactions given a block number.
     """
     access = create_access(network)
     block_num = access.getblockcount()
     block_hash = access.getblockhash(block_num)
     block_data = access.getblock(block_hash)
     transactions = block_data["tx"]
-    # print("chain_info", chain_info)
-    # print("block_num", block_num)
-    # print("block_hash", block_hash)
-    # print("block_data", block_data)
     decoded_trxs = []
     for _, trx in enumerate(transactions):
         raw_trx = access.getrawtransaction(trx)
         decoded_trx = access.decoderawtransaction(raw_trx)
-        # pprint(decoded_tx)
-
-    decoded_trxs.append(decoded_trx)
-
+        decoded_trxs.append(decoded_trx)
     return decoded_trxs
 
 
-def get_received_by(address, comptroller):
+def get_received_by(address: str, comptroller: Dict) -> float:
     """
-    return the amount received by address as float with 8 decimal places
+    Return the amount received by Litecoin or Bitcoin address.
 
-    :param str(address): bitcoin address
-    :param dict(comptroller): used to distinguish ltc vs btc network
-    :return float(): total received by this address
+    :param str(address): Litecoin or Bitcoin address
+    :param dict(comptroller): Used to distinguish LTC vs BTC network
+    :return float: Total received by this address
     """
     network = comptroller["network"]
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(comptroller["network"])
             return float(precisely(float(access.getreceivedbyaddress(address, 2)), 8))
@@ -118,13 +113,26 @@ def get_received_by(address, comptroller):
         iteration += 1
 
 
-def apodize_block_data(comptroller, new_blocks):
+def apodize_block_data(
+    comptroller: Dict[str, Union[str, int]], new_blocks: list
+) -> Dict[str, List[Dict[str, Union[str, float]]]]:
     """
-    build a parachain fragment of all new blocks
+    Build a parachain fragment of all new blocks.
 
-    :return dict(parachain) with int(block_num) keys
-        and value dict() containing normalized transactions with keys:
-        ["to", "from", "memo", "hash", "asset", "amount"]
+    :param dict comptroller: A dict containing information about the network and other parameters.
+        - "network" (str): The network identifier (e.g., "ltc" for Litecoin).
+        - "msg" (str): A message attribute for storing additional information.
+    :param List[int] new_blocks: List of block numbers to process and build the parachain fragment.
+    :return Dict[str, List[Dict[str, Union[str, float]]]]:
+            A dictionary representing the parachain with block numbers as keys.
+            Each value is a list of transfers,
+            where each transfer is represented as a dictionary with keys:
+            - "to" (str): The recipient address.
+            - "from" (str): The sender address.
+            - "memo" (str): The memo associated with the transaction.
+            - "hash" (str): The hash identifier of the transaction.
+            - "asset" (str): The asset type (e.g., "LTC").
+            - "amount" (float): The amount of the transaction.
     """
     network = comptroller["network"]
     parachain = {}

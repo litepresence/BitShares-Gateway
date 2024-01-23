@@ -59,26 +59,33 @@ Launches several concurrent processes:
 
 """
 # STANDARD PYTHON MODULES
-import os
 import time
 from multiprocessing import Process
 from sys import version as python_version
+from typing import Dict
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses
-from config import offerings, processes
+from config import gateway_assets, offerings, processes
+from ipc_utilities import chronicle, json_ipc
+from logo_supreme import run as logo_supreme
 from process_deposits import deposit_server
 from process_ingots import ingot_casting
 from process_parachains import spawn_parachains
 from process_withdrawals import withdrawal_listener
-from utilities import chronicle, it, json_ipc, xterm
+from signing.bitshares.rpc import rpc_get_account, wss_handshake
+from utilities import it, xterm
 
 
-def withdrawal_process(comptroller):
+def withdrawal_process(comptroller: Dict[str, str]) -> None:
     """
-    launch a listener_bitshares subprocess to
-    monitor bitshares chain 24/7 for incoming uia transfers
-    those containing a memo will signal respective foreign chain withdrawals
+    Launch a withdrawal listener subprocess to monitor
+    BitShares chain 24/7 for incoming UIA transfers.
+    Transfers containing a memo will signal respective foreign chain withdrawals.
+
+    :param comptroller: A dictionary containing gateway session information.
+
+    :returns: None
 
     psuedocode withdrawal flow
 
@@ -101,17 +108,18 @@ def withdrawal_process(comptroller):
     process.start()
 
 
-def deposit_process(comptroller):
+def deposit_process(comptroller: Dict[str, str]) -> None:
     """
-    launch a subprocess falcon api server
-    user will send get request with their
-        1) bitshares account name
-        2) coin they would like to deposit
-    server will respond with a foreign chain deposit address from a rotating list
-    the get request will then launch a foreign chain listener
-    upon receipt transfer funds from rotating gateway inbound address to outbound
-    and issue the uia to the client
-    after a period of time an unused gateway request will timeout
+    Launch a Falcon API server subprocess.
+    Users send a GET request with their BitShares account name and coin they want to deposit.
+    The server responds with a foreign chain deposit address from a rotating list.
+    The GET request launches a foreign chain listener,
+    which transfers funds from a rotating gateway inbound address to outbound
+    and issues the UIA to the client. Unused gateway requests timeout after a period.
+
+    :param comptroller: A dictionary containing gateway session information.
+
+    :returns: None
 
     psuedocode deposit flow upon get request
 
@@ -131,11 +139,15 @@ def deposit_process(comptroller):
     process.start()
 
 
-def ingot_process(comptroller):
+def ingot_process(comptroller: Dict[str, str]) -> None:
     """
-    each gateway has several receivable accounts in a list
-    the zero account is also the outbound account
-    periodically shift all funds to the outbound account
+    Each gateway has several receivable accounts in a list.
+    The zero account is also the outbound account.
+    Periodically shift all funds to the outbound account.
+
+    :param comptroller: A dictionary containing gateway session information.
+
+    :returns: None
     """
     comptroller["process"] = "ingots"
     process = Process(target=ingot_casting, args=(comptroller,))
@@ -143,45 +155,45 @@ def ingot_process(comptroller):
     process.start()
 
 
-def watchdog_process():
+def watchdog_process() -> None:
     """
-    periodically each subprocess should be pinged with a nil/null transaction
-    and respond by updating a unix timestamp in watchdog.txt; sample:
+    Periodically ping each subprocess with a nil/null transaction
+    and respond by updating a Unix timestamp in watchdog.txt.
+    On stale subprocesses, alert via email, SMS, open image, play sound, etc.
+
+    :returns: None
 
     {
-        "recycler": 1594108242,
-        "listener": 1594108251,
-        "server": 1594108221,
+        "withdrawals": 1594108242,
+        "deposits": 1594108251,
+        "ingots": 1594108221,
     }
     on stale subprocess: alert via email, sms, open image, play sound, etc.
     """
-    return None  # FIXME build a process watchdog
+    return None  # FIXME build a user specific process watchdog
 
 
-def logo_process():
+def logo_process() -> None:
     """
-    create subprocess for initialization logo
+    Create a subprocess for the initialization logo.
+
+    :returns: None
     """
-
-    def animate_logo():
-        """
-        run subprocess of initialization logo
-        """
-        os.system("python3.8 logo_supreme.py")
-
-    process = Process(target=animate_logo)
-    process.daemon = False
+    process = Process(target=logo_supreme)
+    process.daemon = True
     process.start()
     process.join()
     process.terminate()
 
 
-def parachain_process(comptroller):
+def parachain_process(comptroller: Dict[str, str]) -> None:
     """
-    launch a subprocess for gathering block data
-    the data will be written to disk via json_ipc
-    each listener event will then rely on parachain data
-    instead of external calls
+    Launch a subprocess for gathering block data. The data is written to disk via json_ipc.
+    Each listener event relies on parachain data instead of external calls.
+
+    :param comptroller: A dictionary containing gateway session information.
+
+    :returns: None
     """
     comptroller["process"] = "parachains"
     process = Process(target=spawn_parachains, args=(comptroller,))
@@ -189,18 +201,33 @@ def parachain_process(comptroller):
     process.start()
 
 
-def main():
+def main() -> None:
     """
-    setting state of all inbound accounts to available
-    subprocess auto send all inbound funds to outbound account
-    subprocess deposit api server
-    subprocess bitshares withdrawal listener
+    Setting the state of all inbound accounts to available.
+    Subprocess automatically send all inbound funds to the outbound account.
+    Subprocess deposit API server.
+    subprocess BitShares withdrawal listener.
+
+    :returns: None
     """
     print("\033c\n")
+    print(it("yellow", "Checking BitShares account for authenticity..."))
+    rpc = wss_handshake()
+    for network, data in gateway_assets().items():
+        if not rpc_get_account(rpc, data["issuer_public"]):
+            raise ValueError(
+                it(
+                    "red",
+                    f"Invalid BitShares account name '{data['issuer_public']}'"
+                    f" in gateway_assets[{network}] in config.py",
+                )
+            )
+    print("\033c\n")
+
     # initialize financial incident reporting for audits
     comptroller = {}
     comptroller["session_unix"] = int(time.time())
-    comptroller["session_date"] = time.ctime()
+    comptroller["session_date"] = str(time.ctime())
     comptroller["offerings"] = offerings()
     msg = "initializing gateway main"
     for network in comptroller["offerings"]:
@@ -223,9 +250,9 @@ def main():
             # determine the maximum block number on record
             latest_block = max(parachain_nums)
             print(it(xterm(), f"{network.upper()} BLOCK {latest_block}"))
-        except:
+        except Exception as error:
             print(it("yellow", f"{network.upper()} PARACHAIN FAILED TO INITIALIZE"))
-            raise ChildProcessError()
+            raise ChildProcessError() from error
     print("")
     # spawn 3 concurrent gateway subprocesses; passing the comptroller
     if processes()["ingots"]:
@@ -239,7 +266,6 @@ def main():
 
 
 if __name__ == "__main__":
-
     # ensure the correct python version
     if float(".".join(python_version.split(".")[:2])) < 3.8:
         raise AssertionError("GRAPHENE PYTHON GATEWAY Requires Python 3.8+")

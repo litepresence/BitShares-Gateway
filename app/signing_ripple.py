@@ -29,16 +29,18 @@ import asyncio
 import time
 from json import dumps as json_dumps
 
-# THIRD PARTY MODULES
-from aioxrpy.definitions import RippleTransactionFlags, RippleTransactionType
-from aioxrpy.keys import RippleKey
-from aioxrpy.rpc import RippleJsonRpc
 from requests import get
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, test_accounts
+from ipc_utilities import chronicle
 from nodes import ripple_node
-from utilities import chronicle, it, line_number, timestamp
+# THIRD PARTY MODULES
+from signing.ripple.aioxrpy.definitions import (RippleTransactionFlags,
+                                                RippleTransactionType)
+from signing.ripple.aioxrpy.keys import RippleKey
+from signing.ripple.aioxrpy.rpc import RippleJsonRpc
+from utilities import it, line_number, timestamp
 
 
 def xrp_balance(account, comptroller):
@@ -63,7 +65,7 @@ def xrp_balance(account, comptroller):
     balance = 0
     try:
         # the response is in "ripple drops" we need to convert to xrp
-        balance = float(ret["result"]["account_data"]["Balance"]) / 10 ** 6
+        balance = float(ret["result"]["account_data"]["Balance"]) / 10**6
         # print("\n\nBalance:    ", balance)
     except Exception as error:
         print("\n\nError:   ", error, "\n")
@@ -88,7 +90,7 @@ async def xrp_transfer_execute(order):
         "Account": master.to_account(),
         "Flags": RippleTransactionFlags.FullyCanonicalSig,
         "TransactionType": RippleTransactionType.Payment,
-        "Amount": int(order["quantity"] * 10 ** 6),  # conversion to ripple "drops"
+        "Amount": int(order["quantity"] * 10**6),  # conversion to ripple "drops"
         "Destination": order["to"],
         "Fee": fee.minimum,
     }
@@ -106,9 +108,9 @@ def xrp_transfer(order, comptroller):
     event = asyncio.get_event_loop().run_until_complete(xrp_transfer_execute(order))
     comptroller["tx_id"] = event
     comptroller["order"] = order
-    msg = "xrp transferred"
+    msg = it("red", "XRP TRANSFERRED")
     chronicle(comptroller, msg)
-    print(it("red", "XRP TRANSFERRED"))
+    print(msg)
     return event
 
 
@@ -119,7 +121,7 @@ def unit_test_xrp_transfer():
     given the first two accounts in the configuration file
     send 1 xrp 3 times from first ripple account to second ripple account
     """
-    comptroller = {"test", "test"}
+    comptroller = {"test": "test"}
     # print the start balances
     print("\033c")
     print(xrp_balance(test_accounts()["xrp"]["public"], comptroller))
@@ -138,5 +140,4 @@ def unit_test_xrp_transfer():
 
 
 if __name__ == "__main__":
-
     unit_test_xrp_transfer()

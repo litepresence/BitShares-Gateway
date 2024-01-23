@@ -27,25 +27,26 @@ Ripple parachain builder
 # pylint: disable=too-many-locals, too-many-nested-blocks, bare-except, broad-except
 # pylint: disable=too-many-function-args, too-many-branches, too-many-statements
 
-# STANDARD PYTHON MODULES
+# STANDARD MODULES
 from json import dumps as json_dumps
+from typing import Dict, List, Union
 
 # THIRD PARTY MODULES
 from requests import get
 
 # BITSHARES GATEWAY MODULES
 from config import timing
+from ipc_utilities import chronicle
 from nodes import ripple_node
-from utilities import chronicle
 
 
-def verify_ripple_account(account, comptroller):
+def verify_ripple_account(account: str, comptroller: Dict[str, Union[str, int]]) -> bool:
     """
-    check to see if the address is valid
+    Check if the Ripple address is valid.
 
-    :param str(account): a ripple address
-    :param dict(coptroller): specify network and allow for logging of failure
-    :return bool(): is this a valid address?
+    :param str(account): Ripple address
+    :param dict(comptroller): Dictionary used to specify the network and log failure
+    :return bool: True if the address is valid, False otherwise
     """
     network = comptroller["network"]
     timeout = timing()[network]["request"]
@@ -74,17 +75,17 @@ def verify_ripple_account(account, comptroller):
     is_account = True
     if "account_data" not in ret.keys():
         is_account = False
-        comptroller["msg"] = "invalid address"
-        chronicle(comptroller)
+        msg = "Invalid address"
+        chronicle(comptroller, msg)
     return bool(is_account)
 
 
-def get_block_number(_):
+def get_block_number(_) -> int:
     """
-    ripple public api validated ledger
+    Get the validated ledger index from the Ripple public API.
 
-    :param _: required for cross chain compatability but not applicable to eosio
-    :return int(ledger_index):
+    :param _: Required for cross-chain compatibility but not applicable to Ripple
+    :return int: Validated ledger index
     """
     timeout = timing()["xrp"]["request"]
     data = json_dumps({"method": "ledger", "params": [{"ledger_index": "validated"}]})
@@ -97,16 +98,16 @@ def get_block_number(_):
         except Exception as error:
             print(f"get_validated_ledger access failed {error.args}")
         iteration += 1
-    # print(ledger_index)
+
     return ledger_index
 
 
-def get_ledger(ledger):
+def get_ledger(ledger: int) -> list:
     """
-    ripple public api list of transactions on a specific ledger
+    Get the list of transactions on a specific ledger from the Ripple public API.
 
-    :param int(ledger): current block number
-    :return list(ret): a list of transactions on this block
+    :param int(ledger): Validated ledger index
+    :return list(ret): List of transactions on this ledger
     """
     timeout = timing()["xrp"]["request"]
     data = json_dumps(
@@ -126,42 +127,50 @@ def get_ledger(ledger):
         except Exception as error:
             print(f"get_ledger access failed {error.args}")
         iteration += 1
-    # print(json_dumps(ret, sort_keys=True, indent=2))
+
     return ret
 
 
-def apodize_block_data(comptroller, new_blocks):
+def apodize_block_data(
+    comptroller: Dict[str, Union[str, int]], new_blocks: list
+) -> Dict[str, List[Dict[str, Union[str, float]]]]:
     """
-    build a parachain fragment of all new blocks
+    Build a parachain fragment of all new blocks.
 
-    :return dict(parachain) with int(block_num) keys
-        and value dict() containing normalized transactions with keys:
-        ["to", "from", "memo", "hash", "asset", "amount"]
+    :param dict comptroller: A dict containing information about the network and other parameters.
+        - "network" (str): The network identifier (e.g., "xrp" for Ripple).
+        - "msg" (str): A message attribute for storing additional information.
+    :param List[int] new_blocks: List of block numbers to process and build the parachain fragment.
+    :return Dict[str, List[Dict[str, Union[str, float]]]]:
+            A dictionary representing the parachain with block numbers as keys.
+            Each value is a list of transfers,
+            where each transfer is represented as a dictionary with keys:
+            - "to" (str): The recipient address.
+            - "from" (str): The sender address.
+            - "memo" (str): The memo associated with the transaction.
+            - "hash" (str): The hash identifier of the transaction.
+            - "asset" (str): The asset type (e.g., "XRP").
+            - "amount" (float): The amount of the transaction.
     """
     parachain = {}
-    # check every block from last check till now
+    # Check every block from the last check till now
     for block_num in new_blocks:
         transfers = []
-        # get each new validated ledger
+        # Get each new validated ledger
         transactions = get_ledger(block_num)
-        # iterate through all transactions in the list of transactions
+        # Iterate through all transactions in the list of transactions
         for trx in transactions:
-            # non XRP transaction amounts are in dict format
+            # Non-XRP transaction amounts are in dict format
             if not isinstance(trx["Amount"], dict):
-                # localize data from the transaction
-                trx_amount = int(trx["Amount"]) / 10 ** 6  # convert drops to xrp
+                # Localize data from the transaction
+                trx_amount = int(trx["Amount"]) / 10**6  # Convert drops to XRP
                 trx_to = trx["Destination"]
                 trx_from = trx["Account"]
                 trx_hash = trx["hash"]
-                trx_asset = "XRP"
-                trx_memo = ""
-                try:
-                    trx_memo = trx["DestinationTag"]
-                except:
-                    pass
+                trx_asset = comptroller["network"].upper()
+                trx_memo = trx.get("DestinationTag", "")
                 if len(str(trx_memo)) == 10 and trx_amount > 0.1:
-                    # build transfer dict and append to transfer list
-                    # print(trx)
+                    # Build transfer dict and append to transfer list
                     transfer = {
                         "to": trx_to,
                         "from": trx_from,
@@ -171,6 +180,7 @@ def apodize_block_data(comptroller, new_blocks):
                         "amount": trx_amount,
                     }
                     transfers.append(transfer)
-        # build parachain fragment of transfers for new blocks
+        # Build parachain fragment of transfers for new blocks
         parachain[str(block_num)] = transfers
+
     return parachain

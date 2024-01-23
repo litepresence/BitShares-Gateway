@@ -28,17 +28,18 @@ Eosio Transfer Operations and Account Balances
 import traceback
 from json import dumps as json_dumps
 
-# THIRD PARTY MODULES
-from eosiopy import eosio_config
-from eosiopy.eosioparams import EosioParams
-from eosiopy.nodenetwork import NodeNetwork
-from eosiopy.rawinputparams import RawinputParams
 from requests import post
 
 # BITSHARES GATEWAY MODULES
 from config import foreign_accounts, test_accounts, timing
+from ipc_utilities import chronicle
 from nodes import eosio_node
-from utilities import chronicle, it, line_number, precisely, timestamp
+# THIRD PARTY MODULES
+from signing.eosio.eosiopy import eosio_config
+from signing.eosio.eosiopy.eosioparams import EosioParams
+from signing.eosio.eosiopy.nodenetwork import NodeNetwork
+from signing.eosio.eosiopy.rawinputparams import RawinputParams
+from utilities import it, line_number, precisely, timestamp
 
 
 def eos_balance(account, comptroller):
@@ -109,7 +110,7 @@ def eos_transfer(order, comptroller):
     comptroller["tx_id"] = ret
     comptroller["order"] = order
     msg = "eos transferred"
-    chronicle(comptroller, msg)
+    chronicle(comptroller, it("red", "EOS TRANSFERRED"))
     return ret
 
 
@@ -124,12 +125,11 @@ def unit_test_eos_transfer():
         order["to"] = foreign_accounts()["eos"][0]["public"]
         order["quantity"] = 0.0001
         # serialize, sign, and broadcast
-        comptroller = {"test", "test"}
+        comptroller = {"test": "test"}
         eos_transfer(order, comptroller)
     except Exception:
         print(traceback.format_exc())
 
 
 if __name__ == "__main__":
-
     unit_test_eos_transfer()

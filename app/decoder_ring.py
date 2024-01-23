@@ -21,17 +21,24 @@ WTFPL litepresence.com Jan 2021
 Wrapper for Pybitshares Memo ECDSA decoding
 """
 
-# PYBITSHARES MODULES
-from graphenebase import PrivateKey, PublicKey
-from graphenebase.memo import decode_memo
+# STANDARD MODULES
+from typing import Dict, Optional
 
 # BITSHARES GATEWAY MODULES
 from config import gateway_assets, issuing_chain
+# PYBITSHARES MODULES
+from signing.bitshares.graphene_signing import PrivateKey, PublicKey
+from signing.bitshares.memo import decode_memo
 
 
-def ovaltine(memo, private_key):
+def ovaltine(memo: Dict[str, str], private_key: str) -> str:
     """
-    Decode BitShares Transfer Memo
+    Decode a BitShares transfer memo.
+
+    :param memo: Memo information including "from," "to," "nonce," and "message" fields.
+    :param private_key: Private key associated with the memo "to" public key.
+
+    :return: Decoded memo.
     """
     return (
         decode_memo(
@@ -45,9 +52,15 @@ def ovaltine(memo, private_key):
     )
 
 
-def main(memo=None, private_key=None):
+def main(memo: Optional[Dict[str, str]] = None, private_key: Optional[str] = None) -> None:
     """
-    Sample memo to decode, should say "test"
+    Sample memo decoding. If no memo or private key is provided,
+    it uses default values for demonstration.
+
+    :param memo: Memo information including "from," "to," "nonce," and "message" fields.
+    :param private_key: Private key associated with the memo "to" public key.
+
+    :return: None
     """
     if memo is None:
         memo = {
@@ -63,5 +76,4 @@ def main(memo=None, private_key=None):
 
 
 if __name__ == "__main__":
-
     main()

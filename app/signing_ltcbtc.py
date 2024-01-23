@@ -28,8 +28,8 @@ Litecoin and Bitcoin Transfer Operations and Account Balances
 import time
 
 # BITSHARES GATEWAY MODULES
-from utilities import (chronicle, create_access, line_number, precisely,
-                       timestamp)
+from ipc_utilities import chronicle
+from utilities import create_access, line_number, precisely, timestamp, it
 
 
 def ltcbtc_balance(_, comptroller):
@@ -41,7 +41,7 @@ def ltcbtc_balance(_, comptroller):
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(network)
             return float(access.getbalance())
@@ -61,7 +61,7 @@ def ltcbtc_balances(_, comptroller):
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(comptroller["network"])
             return access.listunspent()
@@ -87,7 +87,7 @@ def ltcbtc_transfer(order, comptroller, pay_fee=True):
     iteration = 0
     while True:
         # increment the delay between attempts exponentially
-        time.sleep(0.02 * iteration ** 2)
+        time.sleep(0.02 * iteration**2)
         try:
             access = create_access(comptroller["network"])
             # access.sendtoaddress(address, amount)
@@ -104,8 +104,9 @@ def ltcbtc_transfer(order, comptroller, pay_fee=True):
         iteration += 1
     comptroller["tx_id"] = tx_id
     comptroller["order"] = order
-    msg = f"{network} transferred"
+    msg = it("red", f"{network} transferred".upper())
     chronicle(comptroller, msg)
+    print(msg)
     return tx_id
 
 
@@ -120,5 +121,4 @@ def unit_test_ltcbtc_transfer():
 
 
 if __name__ == "__main__":
-
     unit_test_ltcbtc_transfer()

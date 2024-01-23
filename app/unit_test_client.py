@@ -86,7 +86,7 @@ def full_balances(network, get_balance):
     )
     # check client bts uia balance
     rpc = wss_handshake("")
-    """
+
     print(
         "\nClient UIA balance of".ljust(31),
         gateway_assets()[network]["asset_name"],
@@ -102,7 +102,6 @@ def full_balances(network, get_balance):
         / 10 ** gateway_assets()[network]["asset_precision"],
         "\n\n",
     )
-    """
 
 
 def uia_supply():
@@ -114,22 +113,14 @@ def uia_supply():
     eos_objects = rpc_get_objects(rpc, [gateway_assets()["eos"]["asset_id"]])
     print(eos_objects[0]["symbol"])
     print(
-        float(
-            rpc_get_objects(rpc, [gateway_assets()["eos"]["dynamic_id"]])[0][
-                "current_supply"
-            ]
-        )
+        float(rpc_get_objects(rpc, [gateway_assets()["eos"]["dynamic_id"]])[0]["current_supply"])
         / 10 ** eos_objects[0]["precision"]
     )
     print("\nXRP UIA NAME AND CURRENT SUPPLY")
     xrp_objects = rpc_get_objects(rpc, [gateway_assets()["xrp"]["asset_id"]])
     print(xrp_objects[0]["symbol"])
     print(
-        float(
-            rpc_get_objects(rpc, [gateway_assets()["xrp"]["dynamic_id"]])[0][
-                "current_supply"
-            ]
-        )
+        float(rpc_get_objects(rpc, [gateway_assets()["xrp"]["dynamic_id"]])[0]["current_supply"])
         / 10 ** xrp_objects[0]["precision"]
     )
 
@@ -171,9 +162,7 @@ def test_deposit(network, get_balance):
     order["quantity"] = 1
     order["to"] = data["deposit_address"]
     order["public"] = test_accounts()[network]["public"]  # pass the sender PUBLIC key
-    order["private"] = test_accounts()[network][
-        "private"
-    ]  # pass the sender PRIVATE key
+    order["private"] = test_accounts()[network]["private"]  # pass the sender PRIVATE key
     if network == "xrp":
         print(xrp_transfer(order, {"test": "test"}))
     elif network == "eos":
@@ -235,12 +224,8 @@ def test_recycler(network, get_balance, do_transfer):
     gate_balances(network, get_balance)
     # deposit to gateway
     order = {}
-    order["public"] = foreign_accounts()[network][0][
-        "public"
-    ]  # pass the sender PUBLIC key
-    order["private"] = foreign_accounts()[network][0][
-        "private"
-    ]  # pass the sender PRIVATE key
+    order["public"] = foreign_accounts()[network][0]["public"]  # pass the sender PUBLIC key
+    order["private"] = foreign_accounts()[network][0]["private"]  # pass the sender PRIVATE key
     order["to"] = foreign_accounts()[network][1]["public"]
     order["quantity"] = 1
     do_transfer(order)
