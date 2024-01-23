@@ -1,8 +1,9 @@
-https://imgur.com/a/kYgOF1g
-
-
-
 # BitShares Gateway Official Documentation
+
+
+[Gateway Demo.webm](https://github.com/litepresence/BitShares-Gateway/assets/27382428/94b9ac96-1202-46a8-b7b8-6ca55552c578)
+
+
 
 ## Overview
 
