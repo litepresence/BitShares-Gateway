@@ -35,9 +35,12 @@ from requests import get
 from config import foreign_accounts, test_accounts
 from ipc_utilities import chronicle
 from nodes import ripple_node
+
 # THIRD PARTY MODULES
-from signing.ripple.aioxrpy.definitions import (RippleTransactionFlags,
-                                                RippleTransactionType)
+from signing.ripple.aioxrpy.definitions import (
+    RippleTransactionFlags,
+    RippleTransactionType,
+)
 from signing.ripple.aioxrpy.keys import RippleKey
 from signing.ripple.aioxrpy.rpc import RippleJsonRpc
 from utilities import it, line_number, timestamp

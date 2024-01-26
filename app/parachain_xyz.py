@@ -42,6 +42,7 @@ To use, write transaction of the following format to pipe/xyz_transactions.txt:
 
 import hashlib
 import time
+
 # STANDARD MODULES
 from typing import Dict, List, Union
 

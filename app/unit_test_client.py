@@ -30,8 +30,7 @@ from pprint import pprint
 from requests import get
 
 # BITSHARES GATEWAY MODULES
-from config import (foreign_accounts, gateway_assets, server_config,
-                    test_accounts)
+from config import foreign_accounts, gateway_assets, server_config, test_accounts
 from process_withdrawals import rpc_balances, rpc_get_objects
 from signing_eosio import eos_balance, eos_transfer
 from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
@@ -113,14 +112,22 @@ def uia_supply():
     eos_objects = rpc_get_objects(rpc, [gateway_assets()["eos"]["asset_id"]])
     print(eos_objects[0]["symbol"])
     print(
-        float(rpc_get_objects(rpc, [gateway_assets()["eos"]["dynamic_id"]])[0]["current_supply"])
+        float(
+            rpc_get_objects(rpc, [gateway_assets()["eos"]["dynamic_id"]])[0][
+                "current_supply"
+            ]
+        )
         / 10 ** eos_objects[0]["precision"]
     )
     print("\nXRP UIA NAME AND CURRENT SUPPLY")
     xrp_objects = rpc_get_objects(rpc, [gateway_assets()["xrp"]["asset_id"]])
     print(xrp_objects[0]["symbol"])
     print(
-        float(rpc_get_objects(rpc, [gateway_assets()["xrp"]["dynamic_id"]])[0]["current_supply"])
+        float(
+            rpc_get_objects(rpc, [gateway_assets()["xrp"]["dynamic_id"]])[0][
+                "current_supply"
+            ]
+        )
         / 10 ** xrp_objects[0]["precision"]
     )
 
@@ -162,7 +169,9 @@ def test_deposit(network, get_balance):
     order["quantity"] = 1
     order["to"] = data["deposit_address"]
     order["public"] = test_accounts()[network]["public"]  # pass the sender PUBLIC key
-    order["private"] = test_accounts()[network]["private"]  # pass the sender PRIVATE key
+    order["private"] = test_accounts()[network][
+        "private"
+    ]  # pass the sender PRIVATE key
     if network == "xrp":
         print(xrp_transfer(order, {"test": "test"}))
     elif network == "eos":
@@ -224,8 +233,12 @@ def test_recycler(network, get_balance, do_transfer):
     gate_balances(network, get_balance)
     # deposit to gateway
     order = {}
-    order["public"] = foreign_accounts()[network][0]["public"]  # pass the sender PUBLIC key
-    order["private"] = foreign_accounts()[network][0]["private"]  # pass the sender PRIVATE key
+    order["public"] = foreign_accounts()[network][0][
+        "public"
+    ]  # pass the sender PUBLIC key
+    order["private"] = foreign_accounts()[network][0][
+        "private"
+    ]  # pass the sender PRIVATE key
     order["to"] = foreign_accounts()[network][1]["public"]
     order["quantity"] = 1
     do_transfer(order)

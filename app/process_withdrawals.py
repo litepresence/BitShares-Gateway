@@ -59,9 +59,19 @@ from signing_eosio import eos_transfer
 from signing_ltcbtc import ltcbtc_transfer
 from signing_ripple import xrp_transfer
 from signing_xyz import xyz_transfer
-from utilities import (block_ops_logo, event_id, from_iso_date, it,
-                       line_number, microseconds, raw_operations, timestamp,
-                       wss_handshake, wss_query)
+from utilities import (
+    block_ops_logo,
+    event_id,
+    from_iso_date,
+    it,
+    line_number,
+    microseconds,
+    raw_operations,
+    timestamp,
+    wss_handshake,
+    wss_query,
+)
+from watchdog import watchdog_sleep
 
 # CONSTANTS
 BLOCK_MAVENS = min(7, len(bitshares_nodes()))
@@ -143,7 +153,9 @@ def choice() -> List[int]:
     try:
         if "," in user_select:
             # If the user enters a list of numbers, attempt json conversion
-            selection = json_loads('["' + user_select.replace(",", '","').replace(" ", "") + '"]')
+            selection = json_loads(
+                '["' + user_select.replace(",", '","').replace(" ", "") + '"]'
+            )
             selection = [int(k) for k in selection]
     except Exception:
         pass
@@ -179,13 +191,17 @@ def spawn_block_num_processes() -> None:
         """
         processes = {}
         for maven_id in range(BLOCK_MAVENS):
-            processes[maven_id] = Process(target=block_num_maven, args=(maven_id,), daemon=True)
+            processes[maven_id] = Process(
+                target=block_num_maven, args=(maven_id,), daemon=True
+            )
             processes[maven_id].start()
         while True:
             for maven_id in range(BLOCK_MAVENS):
                 time.sleep(600 / BLOCK_MAVENS)
                 processes[maven_id].terminate()
-                processes[maven_id] = Process(target=block_num_maven, args=(maven_id,), daemon=True)
+                processes[maven_id] = Process(
+                    target=block_num_maven, args=(maven_id,), daemon=True
+                )
                 processes[maven_id].start()
 
     process = Thread(target=num_processes)
@@ -200,7 +216,9 @@ def spawn_block_processes(new_blocks: List[int]) -> None:
     """
     processes = {}
     for maven_id in range(BLOCK_MAVENS):
-        processes[maven_id] = Process(target=block_maven, args=(maven_id, new_blocks), daemon=True)
+        processes[maven_id] = Process(
+            target=block_maven, args=(maven_id, new_blocks), daemon=True
+        )
         processes[maven_id].start()
     for maven_id in range(BLOCK_MAVENS):
         processes[maven_id].join(6)
@@ -360,7 +378,9 @@ def withdraw(withdrawal_id: int, comptroller: dict) -> None:
     op = comptroller["op"]
 
     # Create a list of issuer ids in the current scope of the gateway
-    issuer_ids = [gateway_assets()[network]["issuer_id"] for network in comptroller["offerings"]]
+    issuer_ids = [
+        gateway_assets()[network]["issuer_id"] for network in comptroller["offerings"]
+    ]
 
     # If it's a transfer to gateway with a memo (within the defined scope)
     tgm = False
@@ -400,11 +420,31 @@ def withdraw(withdrawal_id: int, comptroller: dict) -> None:
 
         # Define dictionary to map uia_id to network, verify function, and transfer function
         network_dict = {
-            gateway_assets()["eos"]["asset_id"]: ("eos", verify_eosio_account, eos_transfer),
-            gateway_assets()["xyz"]["asset_id"]: ("xyz", verify_xyz_account, xyz_transfer),
-            gateway_assets()["xrp"]["asset_id"]: ("xrp", verify_ripple_account, xrp_transfer),
-            gateway_assets()["btc"]["asset_id"]: ("btc", verify_ltcbtc_account, ltcbtc_transfer),
-            gateway_assets()["ltc"]["asset_id"]: ("ltc", verify_ltcbtc_account, ltcbtc_transfer),
+            gateway_assets()["eos"]["asset_id"]: (
+                "eos",
+                verify_eosio_account,
+                eos_transfer,
+            ),
+            gateway_assets()["xyz"]["asset_id"]: (
+                "xyz",
+                verify_xyz_account,
+                xyz_transfer,
+            ),
+            gateway_assets()["xrp"]["asset_id"]: (
+                "xrp",
+                verify_ripple_account,
+                xrp_transfer,
+            ),
+            gateway_assets()["btc"]["asset_id"]: (
+                "btc",
+                verify_ltcbtc_account,
+                ltcbtc_transfer,
+            ),
+            gateway_assets()["ltc"]["asset_id"]: (
+                "ltc",
+                verify_ltcbtc_account,
+                ltcbtc_transfer,
+            ),
         }
 
         if uia_id in network_dict:
@@ -419,7 +459,8 @@ def withdraw(withdrawal_id: int, comptroller: dict) -> None:
             "private": foreign_accounts()[network][0]["private"],
             "public": foreign_accounts()[network][0]["public"],
             "quantity": (
-                op[1]["amount"]["amount"] / 10 ** gateway_assets()[network]["asset_precision"]
+                op[1]["amount"]["amount"]
+                / 10 ** gateway_assets()[network]["asset_precision"]
             ),
             "to": (
                 ovaltine(op[1]["memo"], gateway_assets()[network]["issuer_private"])
@@ -450,7 +491,9 @@ def withdraw(withdrawal_id: int, comptroller: dict) -> None:
         if verify(order["to"], comptroller):
             # Upon hearing real foreign chain transfer, reserve the UIA equal
             # FIXME: Do we need to deep copy here? Perhaps not... for good measure:
-            listener = Thread(target=listener_boilerplate, args=(deepcopy(comptroller),))
+            listener = Thread(
+                target=listener_boilerplate, args=(deepcopy(comptroller),)
+            )
             listener.start()
             msg = f"Spawn {network} withdrawal listener to reserve {order['quantity']}"
             print(it("red", msg), "\n")
@@ -607,8 +650,7 @@ def withdrawal_listener(comptroller: dict, selection: int = None) -> None:
                         json_ipc("unit_test_withdrawal.txt", "[]")
 
                 last_block_num = curr_block_num
-
-            time.sleep(6)
+            watchdog_sleep("withdrawals", 6)  # 2 blocks = 6 seconds
 
         # In the event of any errors, continue from the top of the loop
         # ============================================================

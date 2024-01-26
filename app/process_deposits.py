@@ -23,7 +23,7 @@ Falcon API Server for Gateway Deposit Requests
     upon receipt issue UIA
 """
 # DISABLE SELECT PYLINT TESTS
-# pylint: disable=too-few-public-methods, too-many-function-args
+# pylint: disable=too-few-public-methods, too-many-function-args, too-many-branches
 # pylint: disable=too-many-statements, too-many-locals, bare-except
 
 # STANDARD MODULES
@@ -42,11 +42,18 @@ from falcon import App
 # GATEWAY MODULES
 import wsgiserver
 from address_allocator import initialize_addresses, lock_address
-from config import (contact, foreign_accounts, gateway_assets, offerings,
-                    server_config, timing)
+from config import (
+    contact,
+    foreign_accounts,
+    gateway_assets,
+    offerings,
+    server_config,
+    timing,
+)
 from ipc_utilities import chronicle, json_ipc
 from listener_boilerplate import listener_boilerplate
 from utilities import encode_memo, event_id, it, microseconds
+from watchdog import watchdog_sleep
 
 # GLOBAL CONSTANTS
 STDOUT, _ = Popen(["hostname", "-I"], stdout=PIPE, stderr=PIPE).communicate()
@@ -167,13 +174,22 @@ class GatewayDepositServer:
                     ),
                     "contact": contact(),
                 }
-                if network in ["eos", "xrp", "xyz"]:  # some deposts will require a hashed memo
+                if network in [
+                    "eos",
+                    "xrp",
+                    "xyz",
+                ]:  # some deposts will require a hashed memo
                     response_body["msg"] += (
                         f"\n\n*ALERT*: {network.upper()} deposits must include a the "
                         + "*MEMO* provided in this response!!!"
                     )
                     response_body["memo"] = memo
-                print(it("red", f"STARTING {network.upper()} LISTENER TO ISSUE to {client_id}"))
+                print(
+                    it(
+                        "red",
+                        f"STARTING {network.upper()} LISTENER TO ISSUE to {client_id}",
+                    )
+                )
                 comptroller["amount"] = None
                 comptroller["account_idx"] = account_idx
                 comptroller["required_memo"] = memo
@@ -217,6 +233,14 @@ class GatewayDepositServer:
         resp.status = 200
 
 
+def deposit_watchdog(server: "WSGIServer") -> None:
+    """
+    Kill this child process if main terminates
+    """
+    while server.is_alive():
+        watchdog_sleep("deposits", 10)
+
+
 def deposit_server(comptroller: Dict[str, Any]) -> None:
     """
     Spawn a run forever API server instance and add routing information.
@@ -228,9 +252,13 @@ def deposit_server(comptroller: Dict[str, Any]) -> None:
     app.add_route(f"/{ROUTE}", GatewayDepositServer(comptroller))
     print(it("red", "INITIALIZING DEPOSIT SERVER\n"))
     print(it(159, "serving http at:"), it("green", SERVER_URL))
+    # Create and start the server thread
     my_apps = wsgiserver.WSGIPathInfoDispatcher({"/": app})
     server = wsgiserver.WSGIServer(my_apps, host="0.0.0.0", port=PORT, num_threads=100)
     server.start()
+    # Create and start the watchdog thread
+    watchdog_thread = Thread(target=deposit_watchdog, args=(server,))
+    watchdog_thread.start()
 
 
 def unit_test() -> None:

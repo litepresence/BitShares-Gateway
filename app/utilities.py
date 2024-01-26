@@ -39,6 +39,7 @@ from websocket import create_connection as wss
 
 # BITSHARES GATEWAY MODULES
 from nodes import bitcoin_node, bitshares_nodes, litecoin_node
+
 # THIRD PARTY MODULES
 from signing.bitcoin.bitcoinrpc.authproxy import AuthServiceProxy
 
@@ -55,7 +56,9 @@ def encode_memo(network, seed):
         memo = int(("1" + memo)[:10]) if memo[0] == "0" else int(memo)
     else:
         # 10 digit base 32 ~1,000,000,000,000,000 unique values
-        memo = base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
+        memo = (
+            base64.b32encode(bytearray(sha_msg, "utf-8")).decode("utf-8").lower()[:10]
+        )
     return memo
 
 
@@ -118,7 +121,13 @@ def timestamp():
     """
     print local time, timezone, and unix timestamp
     """
-    now = str(time.ctime()) + " " + str(time.tzname[0]) + " epoch " + str(int(time.time()))
+    now = (
+        str(time.ctime())
+        + " "
+        + str(time.tzname[0])
+        + " epoch "
+        + str(int(time.time()))
+    )
     print(now)
     return now
 

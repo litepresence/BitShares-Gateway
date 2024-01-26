@@ -1,83 +1,42 @@
 # BitShares Gateway Official Documentation
 
-
 [Gateway Demo.webm](https://github.com/litepresence/BitShares-Gateway/assets/27382428/94b9ac96-1202-46a8-b7b8-6ca55552c578)
-
-
 
 ## Overview
 
 The BitShares Gateway is a powerful solution for seamless interactions between different blockchain networks. This documentation provides a concise and clear overview of key components within the BitShares Gateway architecture.
 
-### 1. Introduction
+### 1.0 Introduction
 
 #### 1.1 Purpose
 
-The BitShares Gateway facilitates interoperability between diverse blockchain networks, allowing gateway operators to automatically issue and reserve User Issued Assets (UIA) on Bitshares.
+The BitShares Gateway facilitates interoperability between diverse blockchain networks, allowing gateway operators to automatically issue and reserve User Issued Assets (UIA) on Bitshares and listen for transactions on foreign chains.
 
-#### 1.2 Components
+#### 1.2 Key Components
 
 
+ - db_setup.py - Execute this script before the first deposit to create a SQL database for transparent auditing of your gateway transactions.
 
- - config.py - Customize user preferences crucial for gateway functionality, ensuring a tailored experience.
+ - db_ux.py - CLI visualization utility for the SQL database.   The SQL can also be queried in the traditional SELECT WHERE manner. 
 
- - nodes.py - Maintains essential node endpoints for block operation listeners, vital for foreign chain connectivity to BitShares blockchain.
+ - Gateway.py - The main script orchestrating various subprocesses, offering admins a streamlined interface to launch BitShares Gateway.
 
- - db_setup.py - Executes before the first deposit, creating an SQL database for transparent auditing of gateway transactions.
+ - config.py - Customize admin preferences crucial for gateway functionality from a single place, ensuring a tailored experience.
 
- - Gateway.py - The main script orchestrating various subprocesses, offering users a streamlined single script interface for BitShares Gateway.
+ - nodes.py - Maintains essential node endpoints for block operation listeners, vital for foreign chain connectivity these can be public or preferrably private nodes.
 
  - process_parachains.py - Standardizes foreign blockchain transfer listeners, ensuring consistency and compatibility across diverse networks.
 
- - process_deposits.py - Tracks user requests to deposit foreign chain coins, facilitating a seamless conversion process.
+ - process_deposits.py - Hosts a web based API and tracks user requests to deposit foreign chain coins, facilitating a seamless issuance process.
 
- - process_withdrawals.py - Listens on the BitShares blockchain for UIAs returned to the gateway operator, facilitating user withdrawals.
+ - process_withdrawals.py - Listens on the BitShares blockchain for UIAs returned to the gateway operator, reserves them and facilitates user withdrawals.
 
  - process_ingots.py - Consolidates incoming deposits periodically, optimizing asset management for outbound withdrawal efficiency.
 
-### 2. Usage
+ - watchdog.py - Tracks subprocesses and sends custom alerts.   
 
-The BitShares Gateway, accessible through Gateway.py, provides a user-friendly interface for depositing, withdrawing, and other operations.
 
-### 3. Conclusion
-
-The BitShares Gateway software stands as a robust solution for blockchain interoperability, empowering users to navigate seamlessly between different blockchain ecosystems.
-
-## Gateway.py - BitShares Gateway Main Script
-
-### Overview
-
-Gateway.py serves as the central script for the BitShares Gateway, providing a user-friendly interface for administrators to manage various processes concurrently.
-
-### Script Structure
-
-#### 1. Withdrawal and Reserve Process
-
-- Listens for incoming UIA to the gateway address via a Graphene listener.
-- Confirms the legitimacy of the transfer memo as a foreign chain address.
-- Initiates withdrawal transfer of foreign chain tokens to the client.
-- Listens to the foreign chain to confirm the transfer and reserves UIA.
-
-#### 2. Deposit and Issue Process
-
-- Provides a web API for clients to request a gateway deposit address.
-- Generates a unique address for clients to deposit foreign tokens.
-- Listens for incoming foreign tokens on parachains and issues UIA to the client.
-
-#### 3. Ingot Process
-
-- Periodically checks foreign chain gateway wallets.
-- Consolidates ingots to optimize funds management.
-
-#### 4. Parachain Process
-
-- Writes concise, windowed, apodized blocks of each blockchain offered by the gateway to disk in a standarized format that only includes pertinent information to the gateway operations.
-
-### Subprocess Management
-
-The script utilizes Python's multiprocessing module for concurrent subprocesses, allowing multiple clients to deposit or withdraw various tokens on multiple blockchains simultaneously.
-
-### Dependencies
+### 1.3 Dependencies
 
 The listed dependencies are Python modules that are not included in the standard library and need to be installed separately. Here's a brief description of each dependency:
 
@@ -95,41 +54,200 @@ The listed dependencies are Python modules that are not included in the standard
 
 5. **ecdsa:**
    - ECDSA (Elliptic Curve Digital Signature Algorithm) is a Python library for performing ECDSA cryptographic operations. It is used for creating and verifying digital signatures.
-   - 
-6. **pybitshares:**
-   - Pybitshares is a Python library for interacting with the BitShares blockchain. It provides functionalities for account management, transaction creation, and other blockchain-related operations.
 
-7. **eosiopy:**
-   - Eosiopy is a Python library for interacting with the EOSIO blockchain. It includes modules for handling EOSIO transactions, accounts, and other blockchain-related tasks.
-   - 
-8. **aioxrpy:**
-   - Aioxrpy is a Python library for interacting with the Ripple blockchain. It provides functionalities for working with Ripple accounts, transactions, and other blockchain-related tasks.
-
-9. **bitcoinrpc:**
-    - BitcoinRPC is a Python library that provides a simple interface for communicating with Bitcoin Core's JSON-RPC API. It allows developers to interact with a Bitcoin Core node, making it easier to query information from the Bitcoin blockchain, create transactions, and manage wallet functionality.  BitcoinRPC also provides functionality for Litecoin blockchain. 
-
-To install these dependencies, you can use the following command in your Python environment:
+To install these dependencies, you can use the following command in your Python environment. Make sure to run this command in the terminal or command prompt where your Python environment is active. This will download and install the specified dependencies, allowing your Python scripts to use the functionalities provided by these modules.
 
 ```bash
-pip install falcon pybitshares eosiopy requests websocket-client secp256k1 ecdsa aioxrpy bitcoinrpc
+pip install -r requirements.txt
 ```
 
-Make sure to run this command in the terminal or command prompt where your Python environment is active. This will download and install the specified dependencies, allowing your Python scripts to use the functionalities provided by these modules.
+These following listed dependencies are Python modules that are embedded.  They are blockchain specific SDK's and are included with all dependencies in a frozen format.  If you decide to add new blockchains to the gateway it is recommended to freeze the SDK in the same manner via: 
 
-### Usage
+```bash
+mkdir signing/<new_sdk_folder>
+touch signing/<new_sdk_folder>/__init__.py
+pip install <new_sdk> --target signing/<new_sdk_folder>
+```
 
-To initiate the BitShares Gateway, the administrator runs the script in the terminal using:
+These SDK's have already been frozen onboard:
+
+1. **eosiopy:**
+   - Eosiopy is a Python library for interacting with the EOSIO blockchain. It includes modules for handling EOSIO transactions, accounts, and other blockchain-related tasks.
+   - 
+2. **aioxrpy:**
+   - Aioxrpy is a Python library for interacting with the Ripple blockchain. It provides functionalities for working with Ripple accounts, transactions, and other blockchain-related tasks.
+
+3. **bitcoinrpc:**
+    - BitcoinRPC is a Python library that provides a simple interface for communicating with Bitcoin Core's JSON-RPC API. It allows developers to interact with a Bitcoin Core node, making it easier to query information from the Bitcoin blockchain, create transactions, and manage wallet functionality.  BitcoinRPC also provides functionality for Litecoin blockchain. 
+
+
+
+### 2. Usage
+
+#### 2.1 Quick Demo
+
+To demonstrate the functionality, ensure that "xyz" (the "paper blockchain" designed for unit testing) is configured in `config.py/offerings`. Then execute the following commands in the terminal:
+
+```bash
+python3 db_setup.py
+python3 db_ux.py
+```
+
+Upon confirmation for database removal, the Database Explorer (DBUX) will be launched:
+
+![Database Explorer](images/database_explorer.png)
+
+Use keys 1-3 to toggle the table "checkboxes" and display only deposits and withdrawals. In a separate terminal, initiate the gateway by running:
 
 ```bash
 python3 Gateway.py
 ```
 
+This will initialize the gateway, accompanied by the playback of the theme song and logo animation:
+
+![Initializing](images/initializing.png)
+
+Following this, the startup screen will appear, showing the current block of the XYZ chain and the server's hosted IP:
+
+![Startup](images/initialized.png)
+
+Next, to execute the unit test script to perform XYZ token deposits and withdrawals, run the following command in another terminal:
+
+```bash
+python3 unit_test_xyz_deposit_withdraw.py
+```
+
+The terminal displaying the gateway's operation will output a banner indicating the deposit request and the gateway's readiness to receive deposits:
+
+![Deposit Request](images/deposit_request.png)
+
+Similarly, the DBUX will log the deposit request:
+
+![Deposit Request DBUX](images/dbux_deposit.png)
+
+As the parachain picks up blocks, you will observe the corresponding parachain and BitShares blocks:
+
+![Parachain Blocks](images/deposit_listener.png)
+![Bitshares Blocks](images/bitshares_block.png)
+
+Upon the successful detection of the deposited XYZ "tokens," the gateway will acknowledge the deposit by initiating the signing process to issue tokens:
+
+![Issue Tokens](images/deposit_detected.png)
+
+Since this is a unit test, the absence of authentication keys will cause the signing process to fail:
+
+![Successful Failure](images/issue_signing.png)
+
+The DBUX will also log the unsuccessful attempt to issue tokens:
+
+![DBUX Logging](images/dbux_issue.png)
+
+Following this, the unit test script will proceed to send a withdrawal request, which the gateway will acknowledge:
+
+![Withdrawal Acknowledgement](images/withdrawal_request.png)
+![DBUX Acknowledgement](images/dbux_withdrawal.png)
+
+The gateway will then listen for the withdrawal:
+
+![Withdrawal Listener](images/withdrawal_listener.png)
+
+Approximately 10 XYZ blocks later, the gateway will announce the successful transfer:
+
+![XYZ Transfer Announcement](images/foreign_transfer.png)
+![DBUX Announcement](images/dbux_transferred.png)
+
+After a few more blocks, the gateway will attempt to act on the transfer by initiating the reservation process:
+
+![Reserving](images/reserving.png)
+![DBUX Reserving](images/dbux_reserved.png)
+
+As expected in a unit test, the signing process for the reserve transaction will also fail:
+
+![Successful Failure](images/reserve_signing.png)
+
+*Test Completed!*
+
+-------------------------------
+
+Conclude the demonstration by terminating both the DBUX and the gateway using two "Ctrl + C" keypresses in each terminal.
+
+
+
+#### 2.2 In-Depth
+
+
+The administrator should fully aquaint themselves with the key components and fill out the `config.py` with pertinent information.
+
+Consider adding custom blockchain listeners in the prescribed "xyz" pattern with chain specific SDK's as described later in this document. 
+
+Perform all unit tests:
+
+```bash
+python3 unit_test_transfer_xyz.py
+python3 unit_test_transfer.py
+python3 unit_test_supply.py
+python3 unit_test_issue.py
+python3 unit_test_deposit_concurrency.py
+python3 unit_test_db.py
+python3 unit_test_client.py
+```
+
+Additionally the process scripts each has a main() that serves as a unit test:
+
+```bash
+python3 process_withdrawals.py
+python3 process_parachains.py
+python3 process_ingots.py
+python3 process_deposits.py
+```
+
+After all tests are complete, to initiate the BitShares Gateway, the administrator simply runs the script in the terminal using:
+
+```bash
+python3 Gateway.py
+```
+
+### 3. Technical File Descriptions
+
+## Gateway.py - BitShares Gateway Main Script
+
+### Overview
+
+`Gateway.py` serves as the central script for the BitShares Gateway, providing a user-friendly interface for administrators to initiate all processes concurrently.
+
+### Script Structure
+
+#### 1. Deposit and Issue Process
+
+- Provides a highly concurrent web API for clients to request a gateway deposit address.
+- Generates a unique address for each client to deposit foreign tokens.
+- Listens for incoming foreign tokens on parachains and `issues UIA` to the client.
+
+#### 2. Withdrawal and Reserve Process
+
+- Listens for incoming UIA to the gateway address via a Graphene listener.
+- Confirms the legitimacy of the transfer memo as a foreign chain address.
+- Initiates withdrawal transfer of foreign chain tokens to the client.
+- Listens to the foreign chain to confirm the transfer and `reserve UIA` back to the supply.
+
+#### 3. Ingot Process
+
+- Periodically checks foreign chain gateway wallets.
+- Consolidates ingots of deposits into a single hot wallet to facilitate later withdrawals
+
+#### 4. Parachain Process
+
+- Writes concise, windowed, apodized blocks of each blockchain offered by the gateway to disk in a standarized format that only includes pertinent information to the gateway operations.
+
+### Subprocess Management
+
+The script utilizes Python's multiprocessing module for concurrent subprocesses, allowing multiple clients to deposit or withdraw various tokens on multiple blockchains simultaneously.
 
 ## process_parachains.py - Parachain Management Script
 
 ### Overview
 
-process_parachains.py maintains a windowed parachain for each network specified in the BitShares Gateway, facilitating seamless interactions within the ecosystem.
+`process_parachains.py` maintains a windowed parachain for each foreign blockchain network specified in `config.py` facilitating seamless interactions within each ecosystem.
 
 ### Script Structure
 
@@ -158,22 +276,13 @@ The script utilizes Python's multiprocessing module for concurrent subprocesses,
 
 ### Dependencies
 
-Relies on custom modules parachain_eosio, parachain_ltcbtc, parachain_ripple which standarize block data for each respective chain. 
-
-### Usage
-
-To initiate the parachain management script, the administrator can include the following in their code:
-
-```python
-from process_parachains import unit_test_parachains
-unit_test_parachains()
-```
+Relies on custom modules (eg. parachain_eosio, parachain_ltcbtc, parachain_ripple) which standarize block data for each respective chain. 
 
 ## process_deposits.py - Falcon API Server for Gateway Deposit Requests
 
 ### Overview
 
-process_deposits.py provides a Falcon API server handling deposit requests for the BitShares Gateway, ensuring a seamless user experience.
+`process_deposits.py` provides a very fast and highly concurrent API server to handle deposit requests for the BitShares Gateway, ensuring a seamless user experience.
 
 ### Script Structure
 
@@ -208,16 +317,11 @@ Separate threads for each deposit listener run concurrently, efficiently handlin
 
 ### Server Configuration
 
-Configured based on parameters such as URL, port, and route specified in the server_config module.
+Configured based on parameters such as URL, port, and route specified in the config.py module.
 
-### Usage
+### Embedded WSGI
 
-To initiate the deposit server, the administrator can include the following in their code:
-
-```python
-from process_deposits import unit_test
-unit_test()
-```
+There is no need for the admin to set up a wsgi server, its all onboard.
 
 ## process_ingots.py - Asset Management Script
 
@@ -233,18 +337,10 @@ Defines constants related to configuration, such as maximum unspent transactions
 
 #### Functions
 
-- `ingot_casting(comptroller)`: Continuously checks incoming accounts and moves funds to outbound accounts. Supports various blockchain networks.
-- `gateway_balances(network=None)`: Prints balances for different networks, providing flexibility to print balances for specific networks.
-- `unit_test_ingots()`: A unit test demonstrating balance printing and recycling processes.
+- `ingot_casting(comptroller)`: Continuously checks incoming accounts and moves funds to outbound accounts.
+- `gateway_balances(network=None)`: Prints balances for different networks.
+- `unit_test_ingots()`: A unit test demonstrating recycling processes.
 
-### Execution
-
-The script includes a unit test that prints gateway balances, prompts user input, prints balances again, and demonstrates the recycling process.
-
-### Observations
-
-- Uses a comptroller dictionary to pass information across functions.
-- Employs a continuous loop for ingot casting, checking balances, and performing recycling.
 
 ## db_setup.py - Database Initialization Script
 

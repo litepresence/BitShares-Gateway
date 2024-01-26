@@ -26,6 +26,7 @@ from typing import Dict, Optional
 
 # BITSHARES GATEWAY MODULES
 from config import gateway_assets, issuing_chain
+
 # PYBITSHARES MODULES
 from signing.bitshares.graphene_signing import PrivateKey, PublicKey
 from signing.bitshares.memo import decode_memo
@@ -52,7 +53,9 @@ def ovaltine(memo: Dict[str, str], private_key: str) -> str:
     )
 
 
-def main(memo: Optional[Dict[str, str]] = None, private_key: Optional[str] = None) -> None:
+def main(
+    memo: Optional[Dict[str, str]] = None, private_key: Optional[str] = None
+) -> None:
     """
     Sample memo decoding. If no memo or private key is provided,
     it uses default values for demonstration.

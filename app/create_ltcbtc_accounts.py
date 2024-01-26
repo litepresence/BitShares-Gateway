@@ -21,6 +21,7 @@ WTFPL litepresence.com Jan 2021
 
 # BITSHARES GATEWAY MODULES
 from nodes import bitcoin_node, litecoin_node
+
 # THIRD PARTY MODULES
 from signing.bitcoin.bitcoinrpc.authproxy import AuthServiceProxy
 
@@ -37,15 +38,21 @@ def create_ltcbtc_accounts(number: int, network: str) -> None:
 
     for i in range(number):
         if network == "ltc":
-            access = AuthServiceProxy(litecoin_node()[0] + "/wallet/" + litecoin_node()[1])
-            public = access.getaddressinfo(access.getnewaddress())["embedded"]["address"]
+            access = AuthServiceProxy(
+                litecoin_node()[0] + "/wallet/" + litecoin_node()[1]
+            )
+            public = access.getaddressinfo(access.getnewaddress())["embedded"][
+                "address"
+            ]
             private = access.dumpprivkey(public)
             print("LTC", i + 1)
             print('"public":', '"' + public + '",')
             print('"private":', '"' + private + '",', "\n")
 
         elif network == "btc":
-            access = AuthServiceProxy(bitcoin_node()[0] + "/wallet/" + bitcoin_node()[1])
+            access = AuthServiceProxy(
+                bitcoin_node()[0] + "/wallet/" + bitcoin_node()[1]
+            )
             public = access.getnewaddress("", "legacy")
             private = access.dumpprivkey(public)
             print("BTC", i + 1)

@@ -346,6 +346,7 @@ def json_ipc(doc="", text="", initialize=False, append=False):
                     print("json_ipc pipe initialized, retrying...\n")
                 elif iteration == 10:
                     print("json_ipc unexplained failure\n", traceback.format_exc())
+                    return None
                 iteration += 1
                 continue
             # deliberately double check that the file is closed

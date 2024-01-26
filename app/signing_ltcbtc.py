@@ -29,7 +29,7 @@ import time
 
 # BITSHARES GATEWAY MODULES
 from ipc_utilities import chronicle
-from utilities import create_access, line_number, precisely, timestamp, it
+from utilities import create_access, it, line_number, precisely, timestamp
 
 
 def ltcbtc_balance(_, comptroller):

@@ -25,6 +25,7 @@ Ripple Transfer Operations and Account Balances
 # pylint: disable=broad-except
 
 import json
+
 # STANDARD PYTHON MODULES
 import time
 
@@ -64,6 +65,8 @@ def xyz_transfer(order, comptroller):
     order["quantity"] = order["quantity"] * 10**5
     json_ipc(
         "xyz_transactions.txt",
-        json.dumps([{**order, "type": "transfer", "block_num": int(time.time() / 3) + 5}]),
+        json.dumps(
+            [{**order, "type": "transfer", "block_num": int(time.time() / 3) + 5}]
+        ),
     )
     return event

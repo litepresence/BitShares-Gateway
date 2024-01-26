@@ -52,13 +52,19 @@ def reset_database() -> None:
 
     # User input with warning
     print("\033c")
-    print(it("red", "WARNING: THIS SCRIPT WILL RESTART THE DATABASE AND ERASE ALL DATA\n"))
-    choice: str = input("Erase database? Enter 'y' + Enter to continue or Enter to cancel\n")
+    print(
+        it("red", "WARNING: THIS SCRIPT WILL RESTART THE DATABASE AND ERASE ALL DATA\n")
+    )
+    choice: str = input(
+        "Erase database? Enter 'y' + Enter to continue or Enter to cancel\n"
+    )
 
     # Erase and recreate the database
     if choice == "y":
         # FIXME: Back up instead of remove
-        command: str = f"mv {DB_PATH} {DB_PATH.split('.', maxsplit=1)[0]}_{int(time.time())}.db"
+        command: str = (
+            f"mv {DB_PATH} {DB_PATH.split('.', maxsplit=1)[0]}_{int(time.time())}.db"
+        )
         print("\033c", it("red", command), "\n")
         call(command.split())
         print("Creating SQLite3:", it("green", DB_PATH), "\n")

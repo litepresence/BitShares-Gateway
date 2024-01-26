@@ -16,12 +16,14 @@ r"""
 import os
 import sys
 import termios
+
 # STANDARD PYTHON MODULES
 import time
 import tty
 from typing import Dict, List
 
 from ipc_utilities import sql_db
+
 # BITSHARES GATEWAY MODULES
 from utilities import at, it
 from utilities import logo as gateway_logo
@@ -59,7 +61,9 @@ def custom_center(string: str, length: int, width: int, fillchar: str = " ") -> 
     return centered_string
 
 
-def get_table_data(columns: Dict[str, List[str]], tables: List[str]) -> Dict[str, List[str]]:
+def get_table_data(
+    columns: Dict[str, List[str]], tables: List[str]
+) -> Dict[str, List[str]]:
     """
     Get data from tables.
 
@@ -71,7 +75,9 @@ def get_table_data(columns: Dict[str, List[str]], tables: List[str]) -> Dict[str
     - Dictionary containing table data.
     """
     return {
-        table: sql_db(f"SELECT {', '.join(columns[table])} FROM {table} ORDER BY id DESC")
+        table: sql_db(
+            f"SELECT {', '.join(columns[table])} FROM {table} ORDER BY id DESC"
+        )
         for table in tables
     }
 
@@ -122,7 +128,9 @@ def read_table(
     - True if any entry is highlighted, False otherwise.
     """
     curfetchall = [
-        i for i in curfetchall if time.time() - i[columns.index("event_unix")] < 60 * 60 * 24 * 60
+        i
+        for i in curfetchall
+        if time.time() - i[columns.index("event_unix")] < 60 * 60 * 24 * 60
     ]
 
     col_sizes = [
@@ -154,9 +162,15 @@ def read_table(
                 data += nval
                 escape_len += len(nval) - len(str(val).ljust(col_sizes[idx]))
             text += (
-                custom_center(row[0], len(header) + escape_len, term_size[0] + escape_len) + "\n"
+                custom_center(
+                    row[0], len(header) + escape_len, term_size[0] + escape_len
+                )
+                + "\n"
             )
-            text += custom_center(data, len(header) + escape_len, term_size[0] + escape_len) + "\n"
+            text += (
+                custom_center(data, len(header) + escape_len, term_size[0] + escape_len)
+                + "\n"
+            )
     text += "\n\n"
     print(text)
     return highlighted
@@ -176,7 +190,8 @@ def print_table_header(
     Print the header of a table with a specified color.
     """
     header = "".join(
-        it(color, col.ljust(col_size).upper()) for col, col_size in zip(columns, col_sizes)
+        it(color, col.ljust(col_size).upper())
+        for col, col_size in zip(columns, col_sizes)
     )
     print(header.center(term_size[0]) + "\n\n")
 
@@ -199,7 +214,11 @@ def logo(term_size: List[int]) -> None:
                 "cyan",
                 at(
                     [
-                        (((term_size[0] - 50) // 2) - len(EXPLORER_LOGO[0].split("\n")[0])) // 2,
+                        (
+                            ((term_size[0] - 50) // 2)
+                            - len(EXPLORER_LOGO[0].split("\n")[0])
+                        )
+                        // 2,
                         7,
                     ],
                     EXPLORER_LOGO[0],
@@ -211,7 +230,11 @@ def logo(term_size: List[int]) -> None:
                 "cyan",
                 at(
                     [
-                        (((term_size[0] - 50) // 2) - len(EXPLORER_LOGO[1].split("\n")[0])) // 2
+                        (
+                            ((term_size[0] - 50) // 2)
+                            - len(EXPLORER_LOGO[1].split("\n")[0])
+                        )
+                        // 2
                         + (term_size[0] - 50) // 2
                         + 30,
                         6,

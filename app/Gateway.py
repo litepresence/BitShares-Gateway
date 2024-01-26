@@ -75,6 +75,7 @@ from process_parachains import spawn_parachains
 from process_withdrawals import withdrawal_listener
 from signing.bitshares.rpc import rpc_get_account, wss_handshake
 from utilities import it, xterm
+from watchdog import watchdog, watchdog_sleep
 
 
 def withdrawal_process(comptroller: Dict[str, str]) -> None:
@@ -155,24 +156,6 @@ def ingot_process(comptroller: Dict[str, str]) -> None:
     process.start()
 
 
-def watchdog_process() -> None:
-    """
-    Periodically ping each subprocess with a nil/null transaction
-    and respond by updating a Unix timestamp in watchdog.txt.
-    On stale subprocesses, alert via email, SMS, open image, play sound, etc.
-
-    :returns: None
-
-    {
-        "withdrawals": 1594108242,
-        "deposits": 1594108251,
-        "ingots": 1594108221,
-    }
-    on stale subprocess: alert via email, sms, open image, play sound, etc.
-    """
-    return None  # FIXME build a user specific process watchdog
-
-
 def logo_process() -> None:
     """
     Create a subprocess for the initialization logo.
@@ -210,6 +193,8 @@ def main() -> None:
 
     :returns: None
     """
+    json_ipc("watchdog.txt", r"{}")
+    watchdog("main")
     print("\033c\n")
     print(it("yellow", "Checking BitShares account for authenticity..."))
     rpc = wss_handshake()
@@ -263,6 +248,9 @@ def main() -> None:
         time.sleep(0.2)
     if processes()["withdrawals"]:
         withdrawal_process(comptroller)
+    # Alert if child processes become stale.
+    while True:
+        watchdog_sleep("main", 10)
 
 
 if __name__ == "__main__":

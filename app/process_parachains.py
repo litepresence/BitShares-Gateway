@@ -21,8 +21,6 @@ WTFPL litepresence.com Jan 2021
 apodize block data and write a parachain to disk for each offering
 """
 
-# STANDARD MODULES
-import time
 from json import dumps as json_dumps
 from multiprocessing import Process
 from typing import Any, Dict, List
@@ -38,6 +36,7 @@ from parachain_ripple import apodize_block_data as apodize_ripple_block_data
 from parachain_ripple import get_block_number as get_ripple_block_number
 from parachain_xyz import apodize_block_data as apodize_xyz_block_data
 from parachain_xyz import get_block_number as get_xyz_block_number
+from watchdog import watchdog_sleep
 
 
 def get_block_number(network: str) -> int:
@@ -88,7 +87,9 @@ def spawn_parachains(comptroller: Dict[str, Any]) -> None:
     parachains = {}
     for network in offerings():
         comptroller["network"] = network
-        parachains[network] = Process(target=window_parachain, args=(comptroller,), daemon=False)
+        parachains[network] = Process(
+            target=window_parachain, args=(comptroller,), daemon=False
+        )
         parachains[network].start()
 
 
@@ -107,8 +108,7 @@ def window_parachain(comptroller: Dict[str, Any]) -> None:
     params = parachain_params()
     chronicle(comptroller, "initializing parachain")
     while True:
-        # Limit parachain write frequency
-        time.sleep(params[network]["pause"])
+        watchdog_sleep("parachains", int(params[network]["pause"]))
         # Get the current block number
         current_block_num = get_block_number(network)
         # Get the cached parachain via text pipe ipc
@@ -125,11 +125,15 @@ def window_parachain(comptroller: Dict[str, Any]) -> None:
             # Append the new parachain to the old
             parachain_cache.update(new_parachain)
             # Get all the block numbers in the concatenated parachains
-            parachain_cache_nums = sorted([str(i) for i in list(parachain_cache.keys())])
+            parachain_cache_nums = sorted(
+                [str(i) for i in list(parachain_cache.keys())]
+            )
             # Window the block numbers to the latest blocks only
             window = parachain_cache_nums[-params[network]["window"] :]
             # Window the parachain
-            windowed_parachain = {k: v for k, v in parachain_cache.items() if k in window}
+            windowed_parachain = {
+                k: v for k, v in parachain_cache.items() if k in window
+            }
             # Write the windowed parachain to file
             json_ipc(f"parachain_{network}.txt", json_dumps(windowed_parachain))
 

@@ -25,7 +25,6 @@ ensure all inbound funds are transfered to the zero index outbound account
 # pylint: disable=too-many-nested-blocks
 
 # STANDARD MODULES
-import time
 from typing import Any, Dict
 
 # GATEWAY MODULES
@@ -37,6 +36,7 @@ from signing_eosio import eos_balance
 from signing_ltcbtc import ltcbtc_balance, ltcbtc_balances, ltcbtc_transfer
 from signing_ripple import xrp_balance, xrp_transfer
 from utilities import it, line_number, timestamp
+from watchdog import watchdog_sleep
 
 
 def ingot_casting(comptroller: Dict[str, Any]) -> None:
@@ -115,7 +115,8 @@ def ingot_casting(comptroller: Dict[str, Any]) -> None:
                     chronicle(comptroller, msg)
                     print(msg)
 
-        time.sleep(timing()["ingot"])
+        # Check in with the main process and limit ingot casting frequency
+        watchdog_sleep("ingots", int(timing()["ingots"]))
 
 
 def gateway_balances(network=None) -> None:

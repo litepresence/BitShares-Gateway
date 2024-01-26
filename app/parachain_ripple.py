@@ -27,7 +27,6 @@ Ripple parachain builder
 # pylint: disable=too-many-locals, too-many-nested-blocks, bare-except, broad-except
 # pylint: disable=too-many-function-args, too-many-branches, too-many-statements
 
-# STANDARD MODULES
 from json import dumps as json_dumps
 from typing import Dict, List, Union
 
@@ -40,7 +39,9 @@ from ipc_utilities import chronicle
 from nodes import ripple_node
 
 
-def verify_ripple_account(account: str, comptroller: Dict[str, Union[str, int]]) -> bool:
+def verify_ripple_account(
+    account: str, comptroller: Dict[str, Union[str, int]]
+) -> bool:
     """
     Check if the Ripple address is valid.
 

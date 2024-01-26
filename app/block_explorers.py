@@ -22,7 +22,6 @@ Open 3rd party block explorers in web browser for all pertinent accounts
 """
 
 
-# STANDARD PYTHON MODULES
 from webbrowser import open as browse
 
 # BITSHARES GATEWAY MODULES

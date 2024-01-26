@@ -7,7 +7,7 @@ import time
 
 from requests import get
 
-from config import gateway_assets
+from config import gateway_assets, server_config
 from ipc_utilities import json_ipc
 
 XYZ_ADDRESS = "1.2.123456789"
@@ -16,7 +16,7 @@ BITSHARES_ADDRESS = "1.2.31415"
 
 print("requesting deposit address")
 resp = get(
-    f"http://localhost:4018/gateway?uia_name=GATEWAY.XYZ&client_id={BITSHARES_ADDRESS}"
+    f"http://localhost:{server_config()['port']}/gateway?uia_name=GATEWAY.XYZ&client_id={BITSHARES_ADDRESS}"
 ).json()
 print(f"sending XYZs to {resp['deposit_address']} with memo {resp['memo']}")
 trx = {
@@ -41,7 +41,10 @@ json_ipc(
         [
             0,
             {
-                "amount": {"asset_id": gateway_assets()["xyz"]["asset_id"], "amount": 10000},
+                "amount": {
+                    "asset_id": gateway_assets()["xyz"]["asset_id"],
+                    "amount": 10000,
+                },
                 "to": gateway_assets()["xyz"]["issuer_id"],
                 "memo": XYZ_ADDRESS,
                 "from": BITSHARES_ADDRESS,
