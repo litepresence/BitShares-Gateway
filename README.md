@@ -1,6 +1,8 @@
 # BitShares Gateway Official Documentation
 
-[Gateway Demo.webm](https://github.com/litepresence/BitShares-Gateway/assets/27382428/94b9ac96-1202-46a8-b7b8-6ca55552c578)
+
+![Gateway Logo](images/gateway_logo.gif)
+
 
 ## Overview
 
@@ -86,6 +88,8 @@ These SDK's have already been frozen onboard:
 
 #### 2.1 Quick Demo
 
+[Gateway Demo.webm](https://github.com/litepresence/BitShares-Gateway/assets/27382428/94b9ac96-1202-46a8-b7b8-6ca55552c578)
+
 To demonstrate the functionality, ensure that "xyz" (the "paper blockchain" designed for unit testing) is configured in `config.py/offerings`. Then execute the following commands in the terminal:
 
 ```bash
@@ -103,13 +107,9 @@ Use keys 1-3 to toggle the table "checkboxes" and display only deposits and with
 python3 Gateway.py
 ```
 
-This will initialize the gateway, accompanied by the playback of the theme song and logo animation:
+This will initialize the gateway, accompanied by the playback of the theme song and logo animation.  Following this, the startup screen will appear, showing the current block of the XYZ chain and the server's hosted IP:
 
-![Initializing](images/initializing.png)
-
-Following this, the startup screen will appear, showing the current block of the XYZ chain and the server's hosted IP:
-
-![Startup](images/initialized.png)
+<img src="images/initialized.png" alt="Startup" width="200px" style="margin:auto; width:200px; display:block"/>
 
 Next, to execute the unit test script to perform XYZ token deposits and withdrawals, run the following command in another terminal:
 

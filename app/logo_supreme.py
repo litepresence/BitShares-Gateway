@@ -132,7 +132,11 @@ def bell(duration, freq):
     if not freq or not AUDIO:
         time.sleep(duration / SPEED)
     else:
-        os.system(f"play -n -q -t  alsa synth {duration/SPEED} saw {freq} gain -35")
+        if not os.system(
+                (f"play -n -q -t  alsa synth {duration/SPEED}"
+                f" saw {freq} gain 0 2>/dev/null 1>/dev/null"
+                )):
+            time.sleep(duration/SPEED)
 
 
 def logo_mat():
@@ -275,3 +279,6 @@ def run():
     COINS = coin_mat()
     UIA = uia_mat()
     main()
+
+if __name__ == "__main__":
+    run()

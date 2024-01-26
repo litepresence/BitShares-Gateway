@@ -18,7 +18,8 @@ server.start()
 """
 
 # DISABLE SELECT PYLINT TESTS
-# pylint: disable=protected-access, too-few-public-methods, too-many-arguments, too-many-statements, too-many-return-statements
+# pylint: disable=protected-access, too-few-public-methods, too-many-arguments, too-many-statements
+# pylint: disable=too-many-return-statements
 
 
 __version__ = "1.3"
@@ -42,7 +43,6 @@ __all__ = [
     "WSGIPathInfoDispatcher",
     "SOCKET_ERRORS_TO_IGNORE",
 ]
-import _pyio as io
 import email.utils
 import errno
 import fcntl
@@ -57,6 +57,8 @@ import time
 import traceback as traceback_
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from urllib.parse import unquote_to_bytes, urlparse
+
+import _pyio as io
 
 try:
     import ssl

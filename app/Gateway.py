@@ -58,11 +58,17 @@ Launches several concurrent processes:
     animates the the startup logo allowing a delay for parachains to be built
 
 """
-# STANDARD PYTHON MODULES
+# STANDARD MODULES
+import sys
 import time
 from multiprocessing import Process
 from sys import version as python_version
 from typing import Dict
+
+sys.path.append("signing/eosio")
+sys.path.append("signing/ripple")
+sys.path.append("signing/bitcoin")
+# isort: split
 
 # BITSHARES GATEWAY MODULES
 from address_allocator import initialize_addresses
