@@ -6,13 +6,40 @@
 
 ## Overview
 
-The BitShares Gateway is a powerful solution for seamless interactions between different blockchain networks. This documentation provides a concise and clear overview of key components within the BitShares Gateway architecture.
+BitShares Gateway software is a powerful automation solution enabling seamless Custodial Cross Chain Swaps.
+
+## 0. Preface
+
+### 0.1 BitShares User Issued Assets (UIA):
+
+On BitShares blockchain, the User Issued Assets (UIAs) feature empowers users to effortlessly create and issue custom tokens or assets on the BitShares blockchain from a graphical interface with no development experience. These assets can represent various entities, such as cryptocurrencies, real-world assets (like gold or fiat currencies), or any other tradable asset. Notably, all users can create these assets at will without seeking approval from the BitShares core development team.
+
+BitShares offers a spectrum of on-board features:
+
+- **Trade and Exchange:** UIAs can be traded on the BitShares decentralized exchange (DEX) orderbooks against other assets within the BitShares ecosystem, mirroring the familiar process at centralized exchanges.
+- **Transfer and Payments:** Users can seamlessly transfer UIAs to other BitShares accounts, facilitating peer-to-peer transactions and payments using customized tokens.
+- **Smart Contracts:** BitShares' onboard smart contract capabilities allow users to integrate UIAs into various decentralized finance (DeFi) features, including loans, credit offers, liquidity pools, and market-pegged smartcoins.
+- **Bridge to External Assets:** Through gateways, users can efficiently deposit or withdraw external assets (such as Bitcoin or fiat) onto the BitShares blockchain, enabling custodial cross-chain swaps.
+
+### 0.2 BitShares Gateway:
+
+A BitShares Gateway is a service that streamlines the transfer of assets between the BitShares blockchain and other blockchains or financial systems. Gateways allow users to deposit and withdraw various assets, including cryptocurrencies, fiat currencies, and other tokens, between the BitShares blockchain and external platforms.  When a user deposits a foreign currency, the Gateway Administrator issues a proportional amount of UIA. Similarly, when a user returns the UIA to the Gateway Administrator, they reserve the UIA and return the foreign currency to the user.
+
+### 0.3 BitShares Gateway UIA Automation Software:
+
+BitShares Gateway software automates the issue/reserve/foreign chain transfer routine and keeps track of those operations in a database.
+
+In the past, gateway software operated in closed-source secrecy. When gateways closed, the software vanished, lost forever with the proprietors.  Gateway software was somewhat mythical and considered a trade secret for those who wrote it.   This opacity impeded transparency, accessibility, and growth of diverse gateway offerings within the BitShares decentralized finance ecosystem.
+
+Enter the BitShares-Gateway UIA issuance automation software — an innovative project that disrupts this traditional dynamic. This open-source solution not only empowers users to become Gateway Administrators but also ensures that the underlying software remains accessible and peer-reviewed. Freed, the BitShares community can collectively contribute to, enhance, and secure the infrastructure driving our decentralized financial ecosystem.
+
+As we delve into the details of this software in the upcoming sections, understand how this project transforms the landscape:  Common users, armed with the power to automate bridges, step into the role of stewards in a new era, cultivating and evolving the cross chain software collaboratively.
 
 ### 1.0 Introduction
 
 #### 1.1 Purpose
 
-The BitShares Gateway facilitates interoperability between diverse blockchain networks, allowing gateway operators to automatically issue and reserve User Issued Assets (UIA) on Bitshares and listen for transactions on foreign chains.
+BitShares Gateway allows operators to automatically issue and reserve User Issued Assets (UIA) on Bitshares and listen for transactions on foreign chains in a common adaptable framework.
 
 #### 1.2 Key Components
 
