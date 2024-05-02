@@ -248,7 +248,7 @@ def deposit_server(comptroller: Dict[str, Any]) -> None:
     :param comptroller: The comptroller dictionary.
     """
     json_ipc("deposit_id.txt", json_dumps(1))
-    app = App()
+    app = App(cors_enable=True)
     app.add_route(f"/{ROUTE}", GatewayDepositServer(comptroller))
     print(it("red", "INITIALIZING DEPOSIT SERVER\n"))
     print(it(159, "serving http at:"), it("green", SERVER_URL))

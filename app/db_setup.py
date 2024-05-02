@@ -44,7 +44,7 @@ def reset_database() -> None:
     :return: None
     """
     # Ensure the correct Python version
-    if float(".".join(python_version.split(".")[:2])) < 3.8:
+    if int(python_version.split(".")[0]) < 3 or int(python_version.split(".")[1]) < 8:
         raise AssertionError("Bitshares Gateway Requires Python 3.8+")
 
     # Create the database folder

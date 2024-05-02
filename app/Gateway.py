@@ -261,7 +261,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     # ensure the correct python version
-    if float(".".join(python_version.split(".")[:2])) < 3.8:
+    if int(python_version.split(".")[0]) < 3 or int(python_version.split(".")[1]) < 8:
         raise AssertionError("GRAPHENE PYTHON GATEWAY Requires Python 3.8+")
 
     main()
