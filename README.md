@@ -134,9 +134,13 @@ Use keys 1-3 to toggle the table "checkboxes" and display only deposits and with
 python3 Gateway.py
 ```
 
-This will initialize the gateway, accompanied by the playback of the theme song and logo animation.  Following this, the startup screen will appear, showing the current block of the XYZ chain and the server's hosted IP:
+This will initialize the gateway, accompanied by the playback of the theme song and logo animation:
 
-<img src="images/initialized.png" alt="Startup" width="200px" style="margin:auto; width:200px; display:block"/>
+![Initializing](images/initializing.png)
+
+Following this, the startup screen will appear, showing the current block of the XYZ chain and the server's hosted IP:
+
+![Startup](images/initialized.png)
 
 Next, to execute the unit test script to perform XYZ token deposits and withdrawals, run the following command in another terminal:
 

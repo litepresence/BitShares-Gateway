@@ -61,7 +61,6 @@ def reset_database() -> None:
 
     # Erase and recreate the database
     if choice == "y":
-        # FIXME: Back up instead of remove
         command: str = (
             f"mv {DB_PATH} {DB_PATH.split('.', maxsplit=1)[0]}_{int(time.time())}.db"
         )

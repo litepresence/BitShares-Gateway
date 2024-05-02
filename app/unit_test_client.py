@@ -169,9 +169,7 @@ def test_deposit(network, get_balance):
     order["quantity"] = 1
     order["to"] = data["deposit_address"]
     order["public"] = test_accounts()[network]["public"]  # pass the sender PUBLIC key
-    order["private"] = test_accounts()[network][
-        "private"
-    ]  # pass the sender PRIVATE key
+    order["private"] = test_accounts()[network]["private"]  # pass the sender PRIVATE key
     if network == "xrp":
         print(xrp_transfer(order, {"test": "test"}))
     elif network == "eos":
@@ -233,12 +231,8 @@ def test_recycler(network, get_balance, do_transfer):
     gate_balances(network, get_balance)
     # deposit to gateway
     order = {}
-    order["public"] = foreign_accounts()[network][0][
-        "public"
-    ]  # pass the sender PUBLIC key
-    order["private"] = foreign_accounts()[network][0][
-        "private"
-    ]  # pass the sender PRIVATE key
+    order["public"] = foreign_accounts()[network][0]["public"]  # pass the sender PUBLIC key
+    order["private"] = foreign_accounts()[network][0]["private"]  # pass the sender PRIVATE key
     order["to"] = foreign_accounts()[network][1]["public"]
     order["quantity"] = 1
     do_transfer(order)

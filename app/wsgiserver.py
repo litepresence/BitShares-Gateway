@@ -18,8 +18,7 @@ server.start()
 """
 
 # DISABLE SELECT PYLINT TESTS
-# pylint: disable=protected-access, too-few-public-methods, too-many-arguments, too-many-statements
-# pylint: disable=too-many-return-statements
+# pylint: disable=protected-access, too-few-public-methods, too-many-arguments, too-many-statements, too-many-return-statements
 
 
 __version__ = "1.3"
@@ -43,6 +42,7 @@ __all__ = [
     "WSGIPathInfoDispatcher",
     "SOCKET_ERRORS_TO_IGNORE",
 ]
+import _pyio as io
 import email.utils
 import errno
 import fcntl
@@ -57,8 +57,6 @@ import time
 import traceback as traceback_
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from urllib.parse import unquote_to_bytes, urlparse
-
-import _pyio as io
 
 try:
     import ssl
@@ -100,15 +98,11 @@ def plat_specific_errors(*errnames):
     the specific platform (OS). This function will return the list of
     numeric values for a given list of potential names.
     """
-    return list(
-        dict.fromkeys([getattr(errno, k) for k in errnames if k in dir(errno)]).keys()
-    )
+    return list(dict.fromkeys([getattr(errno, k) for k in errnames if k in dir(errno)]).keys())
 
 
 SOCKET_ERROR_EINTR = plat_specific_errors("EINTR", "WSAEINTR")
-SOCKET_ERRORS_NONBLOCKING = plat_specific_errors(
-    "EAGAIN", "EWOULDBLOCK", "WSAEWOULDBLOCK"
-)
+SOCKET_ERRORS_NONBLOCKING = plat_specific_errors("EAGAIN", "EWOULDBLOCK", "WSAEWOULDBLOCK")
 SOCKET_ERRORS_TO_IGNORE = plat_specific_errors(
     "EPIPE",
     "EBADF",
@@ -427,9 +421,7 @@ class ChunkedRFile:
 
         if crlf != CRLF:
             raise ValueError(
-                "Bad chunked transfer coding (expected '\\r\\n', got "
-                + repr(crlf)
-                + ")"
+                "Bad chunked transfer coding (expected '\\r\\n', got " + repr(crlf) + ")"
             )
 
     def read(self, size=None):
@@ -513,9 +505,7 @@ class ChunkedRFile:
         :returns: A generator yielding trailer lines.
         """
         if not self.closed:
-            raise ValueError(
-                "Cannot read trailers until the request body has been read."
-            )
+            raise ValueError("Cannot read trailers until the request body has been read.")
         while True:
             line = self.rfile.readline()
             if not line:
@@ -544,23 +534,13 @@ class HTTPRequest:
     A single HTTP connection may consist of multiple request/response pairs.
     """
 
-    server: Optional[
-        Any
-    ] = None  # The HTTPServer object which is receiving this request.
-    conn: Optional[
-        Any
-    ] = None  # The HTTPConnection object on which this request connected.
+    server: Optional[Any] = None  # The HTTPServer object which is receiving this request.
+    conn: Optional[Any] = None  # The HTTPConnection object on which this request connected.
     inheaders: Dict[bytes, bytes] = {}  # A dict of request headers.
-    outheaders: List[
-        Tuple[bytes, bytes]
-    ] = []  # A list of header tuples to write in the response.
+    outheaders: List[Tuple[bytes, bytes]] = []  # A list of header tuples to write in the response.
     ready: bool = False  # When True, the request has been parsed and is ready to begin generating the response.
-    close_connection: bool = (
-        False  # Signals the calling Connection that the request should close.
-    )
-    chunked_write: bool = (
-        False  # If True, output will be encoded with the chunked transfer-coding.
-    )
+    close_connection: bool = False  # Signals the calling Connection that the request should close.
+    chunked_write: bool = False  # If True, output will be encoded with the chunked transfer-coding.
 
     def __init__(self, server, conn):
         """
@@ -588,9 +568,7 @@ class HTTPRequest:
         self.close_connection = self.__class__.close_connection
         self.chunked_read = False
         self.chunked_write = self.__class__.chunked_write
-        self.rfile = SizeCheckWrapper(
-            self.conn.rfile, self.server.max_request_header_size
-        )
+        self.rfile = SizeCheckWrapper(self.conn.rfile, self.server.max_request_header_size)
 
     def parse_request(self):
         """
@@ -780,9 +758,7 @@ class HTTPRequest:
             trans_encode = self.inheaders.get(b"Transfer-Encoding")
             if trans_encode:
                 trans_encode = [
-                    error.strip().lower()
-                    for error in trans_encode.split(b",")
-                    if error.strip()
+                    error.strip().lower() for error in trans_encode.split(b",") if error.strip()
                 ]
         self.chunked_read = False
         if trans_encode:
@@ -1152,9 +1128,7 @@ class HTTPConnection:
         except NoSSLError:
             if req and not req.sent_headers:
                 # Unwrap our wfile
-                self.wfile = BufferedWriter(
-                    socket.SocketIO(self.socket._sock, "wb"), self.wbufsize
-                )
+                self.wfile = BufferedWriter(socket.SocketIO(self.socket._sock, "wb"), self.wbufsize)
 
                 req.simple_response(
                     "400 Bad Request",
@@ -1222,11 +1196,11 @@ class WorkerThread(threading.Thread):
     (one for each running WorkerThread).
     """
 
-    conn: Optional[
-        "Connection"
-    ] = None  # The current connection pulled off the Queue, or None.
+    conn: Optional["Connection"] = None  # The current connection pulled off the Queue, or None.
     server: Optional["HTTPServer"] = None  # The HTTP Server which spawned this thread.
-    ready: bool = False  # A flag for the calling server to know when this thread has begun polling the Queue.
+    ready: bool = (
+        False  # A flag for the calling server to know when this thread has begun polling the Queue.
+    )
 
     def __init__(self, server: "HTTPServer") -> None:
         """
@@ -1241,26 +1215,20 @@ class WorkerThread(threading.Thread):
         self.start_time: Optional[float] = None
         self.work_time = 0
         self.stats = {
-            "Requests": lambda s: self.requests_seen
-            + ((self.start_time is None) and TrueyZero() or self.conn.requests_seen),
-            "Bytes Read": lambda s: self.bytes_read
-            + ((self.start_time is None) and TrueyZero() or self.conn.rfile.bytes_read),
-            "Bytes Written": lambda s: self.bytes_written
-            + (
-                (self.start_time is None)
-                and TrueyZero()
-                or self.conn.wfile.bytes_written
+            "Requests": lambda s: self.requests_seen + (
+                (self.start_time is None) and TrueyZero() or self.conn.requests_seen
             ),
-            "Work Time": lambda s: self.work_time
-            + (
-                (self.start_time is None)
-                and TrueyZero()
-                or time.time() - self.start_time
+            "Bytes Read": lambda s: self.bytes_read + (
+                (self.start_time is None) and TrueyZero() or self.conn.rfile.bytes_read
             ),
-            "Read Throughput": lambda s: s["Bytes Read"](s)
-            / (s["Work Time"](s) or 1e-6),
-            "Write Throughput": lambda s: s["Bytes Written"](s)
-            / (s["Work Time"](s) or 1e-6),
+            "Bytes Written": lambda s: self.bytes_written + (
+                (self.start_time is None) and TrueyZero() or self.conn.wfile.bytes_written
+            ),
+            "Work Time": lambda s: self.work_time + (
+                (self.start_time is None) and TrueyZero() or time.time() - self.start_time
+            ),
+            "Read Throughput": lambda s: s["Bytes Read"](s) / (s["Work Time"](s) or 1e-6),
+            "Write Throughput": lambda s: s["Bytes Written"](s) / (s["Work Time"](s) or 1e-6),
         }
         threading.Thread.__init__(self)
 
@@ -1438,9 +1406,7 @@ class SSLAdapter:
     A wrapper for integrating Python's built-in ssl module with WSGIServer.
     """
 
-    def __init__(
-        self, certfile: str, keyfile: str, ca_certs: Optional[str] = None
-    ) -> None:
+    def __init__(self, certfile: str, keyfile: str, ca_certs: Optional[str] = None) -> None:
         """
         Initialize the SSLAdapter.
         :param certfile: The filename of the server SSL certificate.
@@ -1468,9 +1434,7 @@ class SSLAdapter:
         """
         return sock
 
-    def wrap(
-        self, sock: socket.socket
-    ) -> Tuple[Optional[socket.socket], Dict[str, str]]:
+    def wrap(self, sock: socket.socket) -> Tuple[Optional[socket.socket], Dict[str, str]]:
         """
         Wrap and return the given socket, plus WSGI environ entries.
         :param sock: The socket to wrap.
@@ -1525,10 +1489,7 @@ class SSLAdapter:
         return ssl_environ
 
     def makefile(
-        self,
-        sock: socket.socket,
-        mode: str = "r",
-        bufsize: int = io.DEFAULT_BUFFER_SIZE,
+        self, sock: socket.socket, mode: str = "r", bufsize: int = io.DEFAULT_BUFFER_SIZE
     ) -> io.BufferedReader:
         """
         Return a BufferedReader for the given socket.
@@ -1586,9 +1547,7 @@ class HTTPServer:
     # You must have the corresponding SSL driver library installed
     ssl_adapter = None
 
-    def __init__(
-        self, bind_addr, gateway, min_threads=10, max_threads=-1, server_name=None
-    ):
+    def __init__(self, bind_addr, gateway, min_threads=10, max_threads=-1, server_name=None):
         """
         Initialize the HTTP server.
         :param bind_addr: The interface on which to listen for connections.
@@ -1601,9 +1560,7 @@ class HTTPServer:
         """
         self.bind_addr = bind_addr
         self.gateway = gateway
-        self.requests = ThreadPool(
-            self, min_threads=min_threads or 1, max_threads=max_threads
-        )
+        self.requests = ThreadPool(self, min_threads=min_threads or 1, max_threads=max_threads)
         if not server_name:
             server_name = socket.gethostname()
         self.server_name = server_name
@@ -1867,9 +1824,7 @@ class HTTPServer:
                     sock_to_make = sock
                     wfile = makefile(sock_to_make, "wb", io.DEFAULT_BUFFER_SIZE)
 
-                    wfile = BufferedWriter(
-                        socket.SocketIO(sock, "wb"), io.DEFAULT_BUFFER_SIZE
-                    )
+                    wfile = BufferedWriter(socket.SocketIO(sock, "wb"), io.DEFAULT_BUFFER_SIZE)
                     try:
                         wfile.write(("".join(buf)).encode(ISO))
                     except socket.error:
@@ -1959,9 +1914,7 @@ class HTTPServer:
                     # here, because we want an actual IP to touch.
                     # localhost won't work if we've bound to a public IP,
                     # but it will if we bound to '0.0.0.0' (INADDR_ANY).
-                    for res in socket.getaddrinfo(
-                        host, port, socket.AF_UNSPEC, socket.SOCK_STREAM
-                    ):
+                    for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
                         _af, socktype, proto, _, _sa = res
                         sock = None
                         try:
@@ -2120,10 +2073,7 @@ class WSGIGateway(Gateway):
                 response.close()
 
     def start_response(
-        self,
-        status: str,
-        headers: List[Tuple[str, str]],
-        exc_info: Optional[Tuple] = None,
+        self, status: str, headers: List[Tuple[str, str]], exc_info: Optional[Tuple] = None
     ) -> Callable:
         """
         WSGI callable to begin the HTTP response.
@@ -2135,9 +2085,7 @@ class WSGIGateway(Gateway):
         :returns: The write callable.
         """
         if self.started_response and not exc_info:
-            raise AssertionError(
-                "WSGI start_response called a second time with no exc_info."
-            )
+            raise AssertionError("WSGI start_response called a second time with no exc_info.")
         self.started_response = True
 
         if self.req.sent_headers:
@@ -2152,9 +2100,7 @@ class WSGIGateway(Gateway):
             if not isinstance(key, str):
                 raise TypeError(f"WSGI response header key {key!r} is not of type str.")
             if not isinstance(header, str):
-                raise TypeError(
-                    f"WSGI response header value {header!r} is not of type str."
-                )
+                raise TypeError(f"WSGI response header value {header!r} is not of type str.")
             if key.lower() == "content-length":
                 self.remaining_bytes_out = int(header)
             out_header = key.encode(ISO), header.encode(ISO)
@@ -2271,9 +2217,7 @@ class WSGIPathInfoDispatcher:
     apps: a dict or list of (path_prefix, app) pairs.
     """
 
-    def __init__(
-        self, apps: Union[Dict[str, Callable], List[Tuple[str, Callable]]]
-    ) -> None:
+    def __init__(self, apps: Union[Dict[str, Callable], List[Tuple[str, Callable]]]) -> None:
         try:
             apps = list(apps.items())
         except AttributeError:
@@ -2294,7 +2238,5 @@ class WSGIPathInfoDispatcher:
                 environ["PATH_INFO"] = path[len(app_path) :]
                 return app(environ, start_response)
 
-        start_response(
-            "404 Not Found", [("Content-Type", "text/plain"), ("Content-Length", "0")]
-        )
+        start_response("404 Not Found", [("Content-Type", "text/plain"), ("Content-Length", "0")])
         return [""]

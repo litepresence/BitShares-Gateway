@@ -35,14 +35,8 @@ def unit_test_supply():
     rpc = wss_handshake("")
 
     for network in offerings():
-        print(
-            rpc_get_objects(rpc, [gateway_assets()[network]["asset_id"]])[0]["symbol"]
-        )
-        print(
-            rpc_get_objects(rpc, [gateway_assets()[network]["dynamic_id"]])[0][
-                "current_supply"
-            ]
-        )
+        print(rpc_get_objects(rpc, [gateway_assets()[network]["asset_id"]])[0]["symbol"])
+        print(rpc_get_objects(rpc, [gateway_assets()[network]["dynamic_id"]])[0]["current_supply"])
         print("")
 
 
